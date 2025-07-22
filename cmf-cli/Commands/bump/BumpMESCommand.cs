@@ -1,4 +1,5 @@
 using Cmf.CLI.Constants;
+using Cmf.CLI.Core;
 using Cmf.CLI.Core.Attributes;
 using Cmf.CLI.Core.Interfaces;
 using Cmf.CLI.Core.Objects;
@@ -11,6 +12,7 @@ using System.CommandLine;
 using System.CommandLine.NamingConventionBinder;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 
 namespace Cmf.CLI.Commands
 {
@@ -50,12 +52,14 @@ namespace Cmf.CLI.Commands
         public void Execute(DirectoryInfo packagePath, string version)
         {
             using var activity = ExecutionContext.ServiceProvider?.GetService<ITelemetryService>()?.StartExtendedActivity(this.GetType().Name);
-            IFileInfo cmfpackageFile = this.fileSystem.FileInfo.New($"{packagePath}/{CliConstants.CmfPackageFileName}");
 
-            // Reading cmfPackage
-            CmfPackage cmfPackage = CmfPackage.Load(cmfpackageFile);
+            var cmfPackagePaths = this.fileSystem.DirectoryInfo.Wrap(packagePath).GetFiles("cmfpackage.json", SearchOption.AllDirectories);
 
-            Execute(cmfPackage, version);
+            foreach (IFileInfo path in cmfPackagePaths)
+            {
+                Log.Debug($"Processing {path.FullName}");
+                Execute(CmfPackage.Load(path), version);
+            }
         }
 
         /// <summary>
