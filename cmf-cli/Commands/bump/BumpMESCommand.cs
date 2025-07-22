@@ -73,7 +73,7 @@ namespace Cmf.CLI.Commands
             IDirectoryInfo packageDirectory = cmfPackage.GetFileInfo().Directory;
             IPackageTypeHandler packageTypeHandler = PackageTypeFactory.GetPackageTypeHandler(cmfPackage);
 
-            //packageTypeHandler.Bump(version, buildNr, bumpInformation);
+            packageTypeHandler.MESBump(version);
 
             // will save with new version
             cmfPackage.SaveCmfPackage();

@@ -511,13 +511,21 @@ namespace Cmf.CLI.Handlers
         }
 
         /// <summary>
+        /// Bumps the MES version of the package
+        /// </summary>
+        /// <param name="version">The new MES version.</param>
+        public virtual void MESBump(string version) {
+            Log.Information($"Will bump {CmfPackage.PackageId}");
+        }
+
+        /// <summary>
         /// Builds this instance.
         /// </summary>
         public virtual void Build(bool test)
         {
             #region Pre-Build Actions
 
-            foreach(var relatedPackageHandler in RelatedPackagesHandlers.Where(rp => !rp.Key.IsSet && rp.Key.PreBuild))
+            foreach (var relatedPackageHandler in RelatedPackagesHandlers.Where(rp => !rp.Key.IsSet && rp.Key.PreBuild))
             {
                 relatedPackageHandler.Value.Build(test);
                 relatedPackageHandler.Key.IsSet = true;

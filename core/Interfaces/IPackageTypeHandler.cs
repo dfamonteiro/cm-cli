@@ -26,6 +26,12 @@ namespace Cmf.CLI.Core.Interfaces
         public abstract void Bump(string version, string buildNr, Dictionary<string, object> bumpInformation = null);
 
         /// <summary>
+        /// Bumps the MES version of the package
+        /// </summary>
+        /// <param name="version">The new MES version.</param>
+        public abstract void MESBump(string version);
+
+        /// <summary>
         /// Builds this instance.
         /// </summary>
         public void Build(bool test = false);
