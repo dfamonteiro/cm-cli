@@ -4,6 +4,7 @@ using Cmf.CLI.Core.Enums;
 using Cmf.CLI.Core.Objects;
 using Cmf.CLI.Utilities;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -135,6 +136,38 @@ namespace Cmf.CLI.Handlers
 
                 text = Regex.Replace(text, @"@\d+.+?\\""", $"@{version}\\\"", RegexOptions.IgnoreCase);
                 this.fileSystem.File.WriteAllText(mdlPath, text);
+            }
+
+            // Update the IoT workflows
+            foreach (string wflPath in workflowFiles)
+            {
+                string packageJson = fileSystem.File.ReadAllText(wflPath);
+                dynamic packageJsonObject = JsonConvert.DeserializeObject(packageJson);
+
+                string[] IGNORE_PACKAGES = new string[]
+                {
+                    "@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks", // SMT Template
+                    "@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks", // SMT Template
+                    "@criticalmanufacturing/connect-iot-utilities-semi-tasks", // Semi Template
+                };
+
+                foreach (var tasks in packageJsonObject?["tasks"])
+                {
+                    if (!IGNORE_PACKAGES.Contains((string)tasks["reference"]["package"]["name"]))
+                    {
+                        tasks["reference"]["package"]["version"] = version;
+                    }
+                }
+
+                foreach (var tasks in packageJsonObject?["converters"])
+                {
+                    if (!IGNORE_PACKAGES.Contains((string)tasks["reference"]["package"]["name"]))
+                    {
+                        tasks["reference"]["package"]["version"] = version;
+                    }
+                }
+
+                fileSystem.File.WriteAllText(wflPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
             }
         }
 
