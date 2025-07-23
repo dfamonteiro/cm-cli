@@ -100,7 +100,31 @@ namespace Cmf.CLI.Handlers
                 this.fileSystem.File.WriteAllText(filePath, text);
             }
         }
-    
+
+        /// <summary>
+        /// Bumps the MES version of the package
+        /// </summary>
+        /// <param name="version">The new MES version.</param>
+        public override void MESBump(string version)
+        {
+            base.MESBump(version);
+
+            // Csproj files
+            string[] filesToUpdate = this.fileSystem.Directory.GetFiles(this.CmfPackage.GetFileInfo().DirectoryName, "*.csproj", SearchOption.AllDirectories);
+            string pattern = @"(Include=""Cmf\.[^""]*""\s+Version="")(.*?)(""[\s/>])"; // Only update Cmf.* references
+
+            foreach (string filePath in filesToUpdate)
+            {
+                string text = this.fileSystem.File.ReadAllText(filePath);
+                text = Regex.Replace(text, pattern, match =>
+                {
+                    return match.Groups[1].Value + version + match.Groups[3].Value;
+                }, RegexOptions.IgnoreCase);
+
+                this.fileSystem.File.WriteAllText(filePath, text);
+            }
+        }
+
         #endregion
     }
 }
