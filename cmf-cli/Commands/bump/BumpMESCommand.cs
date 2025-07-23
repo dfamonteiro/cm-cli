@@ -49,7 +49,7 @@ namespace Cmf.CLI.Commands
         /// <param name="packagePath">The package path.</param>
         /// <param name="version">The version.</param>
         /// <exception cref="CliException"></exception>
-        public void Execute(DirectoryInfo packagePath, string version)
+        public void Execute(DirectoryInfo packagePath, string MESVersion)
         {
             using var activity = ExecutionContext.ServiceProvider?.GetService<ITelemetryService>()?.StartExtendedActivity(this.GetType().Name);
 
@@ -58,7 +58,7 @@ namespace Cmf.CLI.Commands
             foreach (IFileInfo path in cmfPackagePaths)
             {
                 Log.Debug($"Processing {path.FullName}");
-                Execute(CmfPackage.Load(path), version);
+                Execute(CmfPackage.Load(path), MESVersion);
             }
         }
 

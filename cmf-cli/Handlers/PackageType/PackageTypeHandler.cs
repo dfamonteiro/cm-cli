@@ -516,6 +516,14 @@ namespace Cmf.CLI.Handlers
         /// <param name="version">The new MES version.</param>
         public virtual void MESBump(string version) {
             Log.Information($"Will bump {CmfPackage.PackageId}");
+            CmfPackage.LoadDependencies(null, null);
+            foreach (Dependency dependency in CmfPackage.Dependencies ?? [])
+            {
+                if (dependency.Id == "Cmf.Environment")
+                {
+                    dependency.Version = version;
+                }
+            }
         }
 
         /// <summary>
