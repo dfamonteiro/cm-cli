@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Cmf.CLI.Handlers
 {
@@ -84,6 +85,56 @@ namespace Cmf.CLI.Handlers
                 IoTUtilities.BumpIoTMasterData(automationWorkflowFileGroup, version, buildNr, this.fileSystem, packageNames, onlyCustomization: true);
 
                 #endregion Bump IoT Masterdata
+            }
+        }
+
+        /// <summary>
+        /// Bumps the MES version of the package
+        /// </summary>
+        /// <param name="version">The new MES version.</param>
+        public override void MESBump(string version)
+        {
+            base.MESBump(version);
+
+            List<string> mdlFiles = new List<string>();
+            List<string> workflowFiles = new List<string>();
+
+            foreach (ContentToPack contentToPack in this.CmfPackage.ContentToPack ?? [])
+            {
+                if (contentToPack.ContentType == ContentType.MasterData)
+                {
+                    mdlFiles.AddRange(this.fileSystem.Directory.GetFiles(
+                        this.CmfPackage.GetFileInfo().DirectoryName,
+                        contentToPack.Source,
+                        SearchOption.AllDirectories
+                    ));
+                }
+                else if (contentToPack.ContentType == ContentType.AutomationWorkFlows)
+                {
+                    workflowFiles.AddRange(this.fileSystem.Directory.GetFiles(
+                        this.CmfPackage.GetFileInfo().DirectoryName,
+                        contentToPack.Source,
+                        SearchOption.AllDirectories
+                    ));
+                }
+            }
+
+            if (mdlFiles.Where(mdl => !mdl.EndsWith(".json")).Any())
+            {
+                Log.Warning("Only .json masterdata files will be updated");
+            }
+
+            // Update the MES references that might be present in the mdl files
+            foreach (string mdlPath in mdlFiles)
+            {
+                string text = this.fileSystem.File.ReadAllText(mdlPath);
+                foreach (string key in new string[] { "PackageVersion", "ControllerPackageVersion", "MonitorPackageVersion", "ManagerPackageVersion" })
+                {
+                    text = Regex.Replace(text, $"\"{key}\"" + @".*:.*"".+""", $"\"{key}\": \"{version}\"", RegexOptions.IgnoreCase);
+                }
+
+                text = Regex.Replace(text, @"@\d+.+?\\""", $"@{version}\\\"", RegexOptions.IgnoreCase);
+                this.fileSystem.File.WriteAllText(mdlPath, text);
             }
         }
 
