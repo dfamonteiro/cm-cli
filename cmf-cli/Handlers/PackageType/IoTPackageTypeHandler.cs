@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Cmf.CLI.Handlers
 {
@@ -283,6 +284,35 @@ namespace Cmf.CLI.Handlers
 
                 // IoT -> src -> Package XPTO
                 IoTUtilities.BumpIoTCustomPackages(CmfPackage.GetFileInfo().DirectoryName, version, buildNr, packageNames, this.fileSystem);
+            }
+        }
+
+        /// <summary>
+        /// Bumps the MES version of the package
+        /// </summary>
+        /// <param name="version">The new MES version.</param>
+        public override void MESBump(string version)
+        {
+            base.MESBump(version);
+
+            // package.json files
+            string[] filesToUpdate = this.fileSystem.Directory.GetFiles(this.CmfPackage.GetFileInfo().DirectoryName, "package.json", SearchOption.AllDirectories);
+            string pattern = @"release-\d+";
+
+            foreach (string filePath in filesToUpdate.Where(path => !path.Contains("node_modules") && !path.Contains("dist")))
+            {
+                string text = this.fileSystem.File.ReadAllText(filePath);
+                text = Regex.Replace(text, pattern, $"release-{version.Replace(".", "")}", RegexOptions.IgnoreCase);
+
+                this.fileSystem.File.WriteAllText(filePath, text);
+            }
+
+            // package-lock.json files
+            string[] filesToDelete = this.fileSystem.Directory.GetFiles(this.CmfPackage.GetFileInfo().DirectoryName, "package-lock.json", SearchOption.AllDirectories);
+            foreach (string filePath in filesToDelete.Where(path => !path.Contains("node_modules") && !path.Contains("dist")))
+            {
+                Log.Warning($"Package lock {filePath} has been deleted. Please build the {this.CmfPackage.PackageId} package to regenerate this file");
+                this.fileSystem.File.Delete(filePath);
             }
         }
 
