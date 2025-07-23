@@ -1,10 +1,12 @@
 ﻿using Cmf.CLI.Builders;
 using Cmf.CLI.Commands.restore;
+using Cmf.CLI.Core;
 using Cmf.CLI.Core.Enums;
 using Cmf.CLI.Core.Objects;
 using Cmf.CLI.Utilities;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace Cmf.CLI.Handlers
@@ -110,6 +112,30 @@ namespace Cmf.CLI.Handlers
                 string build = !string.IsNullOrEmpty(buildNr) ? buildNr : "0";
                 string newVersion = string.Format(@"Version(""{0}.{1}.{2}.{3}"")", major, minor, patch, build);
                 text = Regex.Replace(text, pattern, newVersion, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                this.fileSystem.File.WriteAllText(filePath, text);
+            }
+        }
+
+        /// <summary>
+        /// Bumps the MES version of the package
+        /// </summary>
+        /// <param name="version">The new MES version.</param>
+        public override void MESBump(string version)
+        {
+            base.MESBump(version);
+
+            // Csproj files
+            string[] filesToUpdate = this.fileSystem.Directory.GetFiles(this.CmfPackage.GetFileInfo().DirectoryName, "*.csproj", SearchOption.AllDirectories);
+            string pattern = @"(Include=""Cmf\.(?:Navigo|Foundation)[^""]*""\s+Version="")(.*?)(""[\s/>])"; // Only update Cmf.Navigo and Cmf.Foundation references
+
+            foreach (string filePath in filesToUpdate)
+            {
+                string text = this.fileSystem.File.ReadAllText(filePath);
+                text = Regex.Replace(text, pattern, match =>
+                {
+                    return match.Groups[1].Value + version + match.Groups[3].Value;
+                }, RegexOptions.IgnoreCase);
+
                 this.fileSystem.File.WriteAllText(filePath, text);
             }
         }
