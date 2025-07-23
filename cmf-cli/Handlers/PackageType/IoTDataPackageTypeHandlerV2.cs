@@ -109,7 +109,7 @@ namespace Cmf.CLI.Handlers
                 "@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks", // SMT Template
                 "@criticalmanufacturing/connect-iot-utilities-semi-tasks", // Semi Template
             };
-            ignorePackages.AddRange((iotPackagesToIgnore ?? []).Select(pkg => $"@criticalmanufacturing/{pkg}"));
+            ignorePackages.AddRange(iotPackagesToIgnore ?? []);
 
             // Useful debug info
             Log.Debug("Packages that will be ignored:");
@@ -177,7 +177,7 @@ namespace Cmf.CLI.Handlers
                                 continue;
                             }
 
-                            if (ignorePackages.Any(ignore => packageStr.StartsWith(ignore)))
+                            if (ignorePackages.Any(ignore => packageStr.Contains(ignore)))
                             {
                                 continue; // If there's a match with a package in the ignorePackages, skip the version bump
                             }
@@ -201,18 +201,24 @@ namespace Cmf.CLI.Handlers
 
                 foreach (var task in packageJsonObject?["tasks"])
                 {
-                    if (!ignorePackages.Contains((string)task["reference"]["package"]["name"]))
+                    string name = (string)task["reference"]["package"]["name"];
+                    if (ignorePackages.Any(ignore => name.Contains(ignore)))
                     {
-                        task["reference"]["package"]["version"] = iotVersion;
+                        continue; // If there's a match with a package in the ignorePackages, skip the version bump
                     }
+
+                    task["reference"]["package"]["version"] = iotVersion;
                 }
 
                 foreach (var converter in packageJsonObject?["converters"])
                 {
-                    if (!ignorePackages.Contains((string)converter["reference"]["package"]["name"]))
+                    string name = (string)converter["reference"]["package"]["name"];
+                    if (ignorePackages.Any(ignore => name.Contains(ignore)))
                     {
-                        converter["reference"]["package"]["version"] = iotVersion;
+                        continue; // If there's a match with a package in the ignorePackages, skip the version bump
                     }
+
+                    converter["reference"]["package"]["version"] = iotVersion;
                 }
 
                 fileSystem.File.WriteAllText(wflPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
