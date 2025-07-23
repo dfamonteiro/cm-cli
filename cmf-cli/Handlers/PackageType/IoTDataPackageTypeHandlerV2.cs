@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -97,6 +98,23 @@ namespace Cmf.CLI.Handlers
         {
             base.MESBump(version, iotVersion, iotPackagesToIgnore);
 
+            if (iotVersion == null)
+            {
+                return;
+            }
+
+            List<string> ignorePackages = new List<string>()
+            {
+                "@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks", // SMT Template
+                "@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks", // SMT Template
+                "@criticalmanufacturing/connect-iot-utilities-semi-tasks", // Semi Template
+            };
+            ignorePackages.AddRange((iotPackagesToIgnore ?? []).Select(pkg => $"@criticalmanufacturing/{pkg}"));
+
+            // Useful debug info
+            Log.Debug("Packages that will be ignored:");
+            ignorePackages.ForEach(pkg => Log.Debug($"  - {pkg}"));
+
             List<string> mdlFiles = new List<string>();
             List<string> workflowFiles = new List<string>();
 
@@ -126,16 +144,53 @@ namespace Cmf.CLI.Handlers
             }
 
             // Update the MES references that might be present in the mdl files
-            foreach (string mdlPath in mdlFiles)
+            foreach (string mdlPath in mdlFiles.Where(mdl => mdl.EndsWith(".json")))
             {
+                // Update some versions in several places in the masterdata
                 string text = this.fileSystem.File.ReadAllText(mdlPath);
                 foreach (string key in new string[] { "PackageVersion", "ControllerPackageVersion", "MonitorPackageVersion", "ManagerPackageVersion" })
                 {
-                    text = Regex.Replace(text, $"\"{key}\"" + @".*:.*"".+""", $"\"{key}\": \"{version}\"", RegexOptions.IgnoreCase);
+                    text = Regex.Replace(text, $"\"{key}\"" + @".*:.*"".+""", $"\"{key}\": \"{iotVersion}\"", RegexOptions.IgnoreCase);
                 }
 
-                text = Regex.Replace(text, @"@\d+.+?\\""", $"@{version}\\\"", RegexOptions.IgnoreCase);
-                this.fileSystem.File.WriteAllText(mdlPath, text);
+                // Updating the versions in <DM>AutomationController requires special handling
+                JObject packageJsonObject = JsonConvert.DeserializeObject<JObject>(text);
+                JObject automationControllers = packageJsonObject["<DM>AutomationController"] as JObject;
+
+                foreach (var prop in automationControllers.Properties())
+                {
+                    JObject controller = (JObject)prop.Value;
+                    string tasksLibraryPackagesRaw = controller["TasksLibraryPackages"]?.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(tasksLibraryPackagesRaw))
+                    {
+                        // Parse the tasksLibraryPackages json list
+                        JArray tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(tasksLibraryPackagesRaw);
+
+                        // Version bump each package string
+                        for (int i = 0; i < tasksLibraryPackages.Count; i++)
+                        {
+                            string packageStr = tasksLibraryPackages[i]?.ToString();
+
+                            if (string.IsNullOrEmpty(packageStr))
+                            {
+                                continue;
+                            }
+
+                            if (ignorePackages.Any(ignore => packageStr.StartsWith(ignore)))
+                            {
+                                continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                            }
+
+                            tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.+$", $"@{iotVersion}");
+                        }
+
+                        // Save it back into the controller object
+                        controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
+                    }
+                }
+
+                this.fileSystem.File.WriteAllText(mdlPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
             }
 
             // Update the IoT workflows
@@ -144,26 +199,19 @@ namespace Cmf.CLI.Handlers
                 string packageJson = fileSystem.File.ReadAllText(wflPath);
                 dynamic packageJsonObject = JsonConvert.DeserializeObject(packageJson);
 
-                string[] IGNORE_PACKAGES = new string[]
+                foreach (var task in packageJsonObject?["tasks"])
                 {
-                    "@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks", // SMT Template
-                    "@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks", // SMT Template
-                    "@criticalmanufacturing/connect-iot-utilities-semi-tasks", // Semi Template
-                };
-
-                foreach (var tasks in packageJsonObject?["tasks"])
-                {
-                    if (!IGNORE_PACKAGES.Contains((string)tasks["reference"]["package"]["name"]))
+                    if (!ignorePackages.Contains((string)task["reference"]["package"]["name"]))
                     {
-                        tasks["reference"]["package"]["version"] = version;
+                        task["reference"]["package"]["version"] = iotVersion;
                     }
                 }
 
-                foreach (var tasks in packageJsonObject?["converters"])
+                foreach (var converter in packageJsonObject?["converters"])
                 {
-                    if (!IGNORE_PACKAGES.Contains((string)tasks["reference"]["package"]["name"]))
+                    if (!ignorePackages.Contains((string)converter["reference"]["package"]["name"]))
                     {
-                        tasks["reference"]["package"]["version"] = version;
+                        converter["reference"]["package"]["version"] = iotVersion;
                     }
                 }
 
