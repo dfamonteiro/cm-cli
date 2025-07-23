@@ -29,7 +29,9 @@ namespace Cmf.CLI.Core.Interfaces
         /// Bumps the MES version of the package
         /// </summary>
         /// <param name="version">The new MES version.</param>
-        public abstract void MESBump(string version);
+        /// <param name="iotVersion">New MES version for the IoT workflows & masterdata</param>
+        /// <param name="iotPackagesToIgnore">IoT packages to ignore when updating the MES version of the tasks in IoT workflows</param>
+        public abstract void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore);
 
         /// <summary>
         /// Builds this instance.

@@ -514,7 +514,7 @@ namespace Cmf.CLI.Handlers
         /// Bumps the MES version of the package
         /// </summary>
         /// <param name="version">The new MES version.</param>
-        public virtual void MESBump(string version) {
+        public virtual void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore) {
             Log.Information($"Will bump {CmfPackage.PackageId}");
             CmfPackage.LoadDependencies(null, null);
             foreach (Dependency dependency in CmfPackage.Dependencies ?? [])

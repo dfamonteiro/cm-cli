@@ -93,9 +93,9 @@ namespace Cmf.CLI.Handlers
         /// Bumps the MES version of the package
         /// </summary>
         /// <param name="version">The new MES version.</param>
-        public override void MESBump(string version)
+        public override void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore)
         {
-            base.MESBump(version);
+            base.MESBump(version, iotVersion, iotPackagesToIgnore);
 
             List<string> mdlFiles = new List<string>();
             List<string> workflowFiles = new List<string>();
