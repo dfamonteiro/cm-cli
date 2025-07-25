@@ -169,26 +169,7 @@ namespace Cmf.CLI.Handlers
         public override void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore)
         {
             base.MESBump(version, iotVersion, iotPackagesToIgnore);
-
-            // package.json files
-            string[] filesToUpdate = this.fileSystem.Directory.GetFiles(this.CmfPackage.GetFileInfo().DirectoryName, "package.json", SearchOption.AllDirectories);
-            string pattern = @"release-\d+";
-
-            foreach (string filePath in filesToUpdate.Where(path => !path.Contains("node_modules") && !path.Contains("dist")))
-            {
-                string text = this.fileSystem.File.ReadAllText(filePath);
-                text = Regex.Replace(text, pattern, $"release-{version.Replace(".", "")}", RegexOptions.IgnoreCase);
-
-                this.fileSystem.File.WriteAllText(filePath, text);
-            }
-
-            // package-lock.json files
-            string[] filesToDelete = this.fileSystem.Directory.GetFiles(this.CmfPackage.GetFileInfo().DirectoryName, "package-lock.json", SearchOption.AllDirectories);
-            foreach (string filePath in filesToDelete.Where(path => !path.Contains("node_modules") && !path.Contains("dist")))
-            {
-                Log.Warning($"Package lock {filePath} has been deleted. Please build the {this.CmfPackage.PackageId} package to regenerate this file");
-                this.fileSystem.File.Delete(filePath);
-            }
+            MESBumpUtilities.UpdateNPMProject(this.fileSystem, this.CmfPackage, version);
         }
 
         // TODO: enable this when we can transform config.json

@@ -123,21 +123,7 @@ namespace Cmf.CLI.Handlers
         public override void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore)
         {
             base.MESBump(version, iotVersion, iotPackagesToIgnore);
-
-            // Csproj files
-            string[] filesToUpdate = this.fileSystem.Directory.GetFiles(this.CmfPackage.GetFileInfo().DirectoryName, "*.csproj", SearchOption.AllDirectories);
-            string pattern = @"(Include=""Cmf\.(?:Navigo|Foundation)[^""]*""\s+Version="")(.*?)(""[\s/>])"; // Only update Cmf.Navigo and Cmf.Foundation references
-
-            foreach (string filePath in filesToUpdate)
-            {
-                string text = this.fileSystem.File.ReadAllText(filePath);
-                text = Regex.Replace(text, pattern, match =>
-                {
-                    return match.Groups[1].Value + version + match.Groups[3].Value;
-                }, RegexOptions.IgnoreCase);
-
-                this.fileSystem.File.WriteAllText(filePath, text);
-            }
+            MESBumpUtilities.UpdateCSharpProject(this.fileSystem, this.CmfPackage, version, true);
         }
     }
 }

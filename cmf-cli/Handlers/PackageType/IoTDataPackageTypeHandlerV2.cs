@@ -150,7 +150,7 @@ namespace Cmf.CLI.Handlers
                 string text = this.fileSystem.File.ReadAllText(mdlPath);
                 foreach (string key in new string[] { "PackageVersion", "ControllerPackageVersion", "MonitorPackageVersion", "ManagerPackageVersion" })
                 {
-                    text = Regex.Replace(text, $"\"{key}\"" + @".*:.*"".+""", $"\"{key}\": \"{iotVersion}\"", RegexOptions.IgnoreCase);
+                    text = MESBumpUtilities.UpdateJsonValue(text, key, iotVersion);
                 }
 
                 // Updating the versions in <DM>AutomationController requires special handling
