@@ -148,7 +148,7 @@ namespace Cmf.CLI.Commands
 
                     text = Regex.Replace(
                         text, 
-                        @"\\\\management\\Setups\\cmNavigo.+Optional Services\.iso",
+                        @"\\\\management\\Setups\\cmNavigo.+\.iso",
                         generateIsoLocation(MESVersion), 
                         RegexOptions.IgnoreCase
                     );
@@ -168,7 +168,15 @@ namespace Cmf.CLI.Commands
         {
             Version version = new Version(MESVersion);
             string majorMinor = $"{version.Major}.{version.Minor}";
-            return $@"\\management\Setups\cmNavigo\v{majorMinor}.x\Critical Manufacturing {MESVersion}-Optional Services.iso";
+
+            if (version.Major >= 11)
+            {
+                return $@"\\management\Setups\cmNavigo\v{majorMinor}.x\Critical Manufacturing {MESVersion}-Optional Services.iso";
+            }
+            else
+            {
+                return $@"\\management\Setups\cmNavigo\v{majorMinor}.x\Critical Manufacturing {MESVersion}.iso";
+            }
         }
         #endregion
     }
