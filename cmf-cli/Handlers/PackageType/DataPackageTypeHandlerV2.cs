@@ -88,6 +88,16 @@ namespace Cmf.CLI.Handlers
         }
 
         /// <summary>
+        /// Bumps the MES version of the package
+        /// </summary>
+        /// <param name="version">The new MES version.</param>
+        public override void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore)
+        {
+            base.MESBump(version, iotVersion, iotPackagesToIgnore);
+            MESBumpUtilities.UpdateCSharpProject(this.fileSystem, this.CmfPackage, version, true);
+        }
+
+        /// <summary>
         /// Generates the deployment framework manifest.
         /// </summary>
         /// <param name="packageOutputDir">The package output dir.</param>

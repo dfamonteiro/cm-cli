@@ -59,7 +59,7 @@ namespace Cmf.CLI.Utilities
         /// <param name="cmfPackage">The CMF package object containing the root directory path.</param>
         /// <param name="version">The new MES version.</param>
         /// <param name="strictMatching">
-        ///     If true, only references to Cmf.Navigo and Cmf.Foundation packages will be updated.
+        ///     If true, only references to Cmf.Navigo, Cmf.Foundation and Cmf.MessageBus packages will be updated.
         ///     If false, all packages starting with Cmf. will be updated.
         /// </param>
         public static void UpdateCSharpProject(IFileSystem fileSystem, CmfPackage cmfPackage, string version, bool strictMatching)
@@ -70,7 +70,7 @@ namespace Cmf.CLI.Utilities
             if (strictMatching)
             {
                 // Only update Cmf.Navigo and Cmf.Foundation references
-                pattern = @"(Include=""Cmf\.(?:Navigo|Foundation)[^""]*""\s+Version="")(.*?)(""[\s/>])";
+                pattern = @"(Include=""Cmf\.(?:Navigo|Foundation|MessageBus)[^""]*""\s+Version="")(.*?)(""[\s/>])";
             }
             else
             {
