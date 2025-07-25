@@ -9,6 +9,7 @@ using Cmf.CLI.Core.Objects;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using Cmf.CLI.Core.Enums;
+using System;
 
 namespace Cmf.CLI.Utilities
 {
@@ -256,7 +257,23 @@ namespace Cmf.CLI.Utilities
                 converter["reference"]["package"]["version"] = version;
             }
 
-            fileSystem.File.WriteAllText(wflPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
+            // Write the JSON file while preserving the original indentation
+
+            // Get the leading whitespace of the second JSON line (it should have exactly one level of indentation)
+            string originalIndentation = Regex.Match(packageJson.Split('\n')[1], @"^\s*").Value;
+
+            StringWriter stringWriter = new StringWriter();
+            JsonTextWriter jsonWriter = new JsonTextWriter(stringWriter)
+            {
+                Formatting  = Formatting.Indented,
+                Indentation = originalIndentation.Length,
+                IndentChar  = originalIndentation[0],
+            };
+
+            JsonSerializer serializer = new JsonSerializer();
+            serializer.Serialize(jsonWriter, packageJsonObject);
+
+            fileSystem.File.WriteAllText(wflPath, stringWriter.ToString());
         }
     }
 }
