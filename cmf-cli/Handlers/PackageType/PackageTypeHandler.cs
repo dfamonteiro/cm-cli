@@ -20,6 +20,8 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 using Cmf.CLI.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Linq;
+using SharpCompress.Common;
 
 [assembly: InternalsVisibleTo("tests")]
 
@@ -516,14 +518,27 @@ namespace Cmf.CLI.Handlers
         /// <param name="version">The new MES version.</param>
         public virtual void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore) {
             Log.Information($"Will bump {CmfPackage.PackageId}");
-            CmfPackage.LoadDependencies(null, null);
-            foreach (Dependency dependency in CmfPackage.Dependencies ?? [])
+
+            // Read and parse the JSON
+            string text = fileSystem.File.ReadAllText(CmfPackage.GetFileInfo().FullName);
+            JObject jsonObject = JObject.Parse(text);
+
+            // Get dependencies array
+            if (jsonObject.ContainsKey("dependencies"))
             {
-                if (dependency.Id == "Cmf.Environment" || dependency.Id == "criticalmanufacturing.deploymentmetadata")
+                // Find the dependency and update version
+                foreach (JObject dep in (JArray)jsonObject["dependencies"])
                 {
-                    dependency.Version = version;
+                    if (dep["id"]?.ToString() == "Cmf.Environment" || dep["id"]?.ToString() == "criticalmanufacturing.deploymentmetadata")
+                    {
+                        dep["version"] = version;
+                        break;
+                    }
                 }
             }
+
+            // Write back to the file
+            fileSystem.File.WriteAllText(CmfPackage.GetFileInfo().FullName, jsonObject.ToString(Newtonsoft.Json.Formatting.Indented));
         }
 
         /// <summary>

@@ -97,9 +97,6 @@ namespace Cmf.CLI.Commands
             IPackageTypeHandler packageTypeHandler = PackageTypeFactory.GetPackageTypeHandler(cmfPackage);
 
             packageTypeHandler.MESBump(version, iotVersion, iotPackagesToIgnore);
-
-            // will save with new version
-            cmfPackage.SaveCmfPackage();
         }
 
         #region Utilities
