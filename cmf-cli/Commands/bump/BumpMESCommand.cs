@@ -103,6 +103,12 @@ namespace Cmf.CLI.Commands
         }
 
         #region Utilities
+
+        /// <summary>
+        /// Updates the `ProjectConfig.json` file if found.
+        /// </summary>
+        /// <param name="packagePath">The package path.</param>
+        /// <param name="MESVersion">The new MES version.</param>
         private void UpdateProjectConfig(IDirectoryInfo packagePath, string MESVersion)
         {
             IFileInfo projectConfig = this.fileSystem.FileInfo.New($"{packagePath}/{CoreConstants.ProjectConfigFileName}");
@@ -122,6 +128,11 @@ namespace Cmf.CLI.Commands
             }
         }
 
+        /// <summary>
+        /// Updates the pipeline variable YAML files if found.
+        /// </summary>
+        /// <param name="packagePath">The package path.</param>
+        /// <param name="MESVersion">The new MES version.</param>
         private void UpdatePipelineFiles(IDirectoryInfo packagePath, string MESVersion)
         {
             IDirectoryInfo variablesDir = this.fileSystem.DirectoryInfo.New($"{packagePath}/Builds/.vars");
