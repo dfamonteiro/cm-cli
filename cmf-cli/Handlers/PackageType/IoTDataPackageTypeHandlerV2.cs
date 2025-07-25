@@ -97,6 +97,7 @@ namespace Cmf.CLI.Handlers
         public override void MESBump(string version, string iotVersion, List<string> iotPackagesToIgnore)
         {
             base.MESBump(version, iotVersion, iotPackagesToIgnore);
+            MESBumpUtilities.UpdateCSharpProject(this.fileSystem, this.CmfPackage, version, true);
 
             if (iotVersion == null)
             {
