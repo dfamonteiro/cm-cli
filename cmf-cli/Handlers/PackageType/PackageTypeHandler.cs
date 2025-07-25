@@ -519,7 +519,7 @@ namespace Cmf.CLI.Handlers
             CmfPackage.LoadDependencies(null, null);
             foreach (Dependency dependency in CmfPackage.Dependencies ?? [])
             {
-                if (dependency.Id == "Cmf.Environment")
+                if (dependency.Id == "Cmf.Environment" || dependency.Id == "criticalmanufacturing.deploymentmetadata")
                 {
                     dependency.Version = version;
                 }

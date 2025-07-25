@@ -1,17 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using System.Text.RegularExpressions;
 using Cmf.CLI.Builders;
 using Cmf.CLI.Commands;
 using Cmf.CLI.Commands.restore;
 using Cmf.CLI.Core;
+using Cmf.CLI.Core.Constants;
 using Cmf.CLI.Core.Enums;
 using Cmf.CLI.Core.Objects;
 using Cmf.CLI.Utilities;
+using Microsoft.TemplateEngine.Abstractions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NuGet.ContentModel;
 
 namespace Cmf.CLI.Handlers
 {
@@ -194,6 +199,18 @@ namespace Cmf.CLI.Handlers
         {
             base.MESBump(version, iotVersion, iotPackagesToIgnore);
             MESBumpUtilities.UpdateNPMProject(this.fileSystem, this.CmfPackage, version);
+
+            // Update the version in the config.json file
+            IFileInfo config = this.fileSystem.FileInfo.New($"{this.CmfPackage.GetFileInfo().DirectoryName}/src/assets/config.json");
+
+            if (config.Exists)
+            {
+                Log.Debug($"Updating {config}");
+
+                string text = fileSystem.File.ReadAllText(config.FullName);
+                text = MESBumpUtilities.UpdateJsonValue(text, "version", version);
+                fileSystem.File.WriteAllText(config.FullName, text);
+            }
         }
     }
 }

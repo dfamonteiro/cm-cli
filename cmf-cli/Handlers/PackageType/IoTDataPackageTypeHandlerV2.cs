@@ -156,47 +156,53 @@ namespace Cmf.CLI.Handlers
 
                 // Updating the versions in <DM>AutomationController requires special handling
                 JObject packageJsonObject = JsonConvert.DeserializeObject<JObject>(text);
-                JObject automationControllers = packageJsonObject["<DM>AutomationController"] as JObject;
 
-                foreach (var prop in automationControllers.Properties())
+                if (packageJsonObject.ContainsKey("<DM>AutomationController"))
                 {
-                    JObject controller = (JObject)prop.Value;
-                    string tasksLibraryPackagesRaw = controller["TasksLibraryPackages"]?.ToString();
+                    JObject automationControllers = packageJsonObject["<DM>AutomationController"] as JObject;
 
-                    if (!string.IsNullOrWhiteSpace(tasksLibraryPackagesRaw))
+                    foreach (var prop in automationControllers.Properties())
                     {
-                        // Parse the tasksLibraryPackages json list
-                        JArray tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(tasksLibraryPackagesRaw);
+                        JObject controller = (JObject)prop.Value;
+                        string tasksLibraryPackagesRaw = controller["TasksLibraryPackages"]?.ToString();
 
-                        // Version bump each package string
-                        for (int i = 0; i < tasksLibraryPackages.Count; i++)
+                        if (!string.IsNullOrWhiteSpace(tasksLibraryPackagesRaw))
                         {
-                            string packageStr = tasksLibraryPackages[i]?.ToString();
+                            // Parse the tasksLibraryPackages json list
+                            JArray tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(tasksLibraryPackagesRaw);
 
-                            if (string.IsNullOrEmpty(packageStr))
+                            // Version bump each package string
+                            for (int i = 0; i < tasksLibraryPackages.Count; i++)
                             {
-                                continue;
+                                string packageStr = tasksLibraryPackages[i]?.ToString();
+
+                                if (string.IsNullOrEmpty(packageStr))
+                                {
+                                    continue;
+                                }
+
+                                if (ignorePackages.Any(ignore => packageStr.Contains(ignore)))
+                                {
+                                    continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                                }
+
+                                tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.+$", $"@{iotVersion}");
                             }
 
-                            if (ignorePackages.Any(ignore => packageStr.Contains(ignore)))
-                            {
-                                continue; // If there's a match with a package in the ignorePackages, skip the version bump
-                            }
-
-                            tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.+$", $"@{iotVersion}");
+                            // Save it back into the controller object
+                            controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
                         }
-
-                        // Save it back into the controller object
-                        controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
                     }
                 }
 
                 this.fileSystem.File.WriteAllText(mdlPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
             }
 
+            Log.Debug("Processing workflows...");
             // Update the IoT workflows
-            foreach (string wflPath in workflowFiles)
+            foreach (string wflPath in workflowFiles.Where(path => path.EndsWith(".json")))
             {
+                Log.Debug($"  - {wflPath}");
                 string packageJson = fileSystem.File.ReadAllText(wflPath);
                 dynamic packageJsonObject = JsonConvert.DeserializeObject(packageJson);
 
