@@ -1,11 +1,13 @@
 using Cmf.CLI.Constants;
 using Cmf.CLI.Core;
 using Cmf.CLI.Core.Attributes;
+using Cmf.CLI.Core.Constants;
 using Cmf.CLI.Core.Interfaces;
 using Cmf.CLI.Core.Objects;
 using Cmf.CLI.Factories;
 using Cmf.CLI.Utilities;
 using Microsoft.Extensions.DependencyInjection;
+using SharpCompress.Common;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -13,6 +15,7 @@ using System.CommandLine.NamingConventionBinder;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Cmf.CLI.Commands
 {
@@ -29,9 +32,9 @@ namespace Cmf.CLI.Commands
         /// <param name="cmd"></param>
         public override void Configure(Command cmd)
         {
-            cmd.AddArgument(new Argument<DirectoryInfo>(
+            cmd.AddArgument(new Argument<IDirectoryInfo>(
                 name: "packagePath",
-                getDefaultValue: () => { return new("."); },
+                parse: (argResult) => Parse<IDirectoryInfo>(argResult, "."),
                 description: "Package path"));
 
             cmd.AddArgument(new Argument<string>(
@@ -53,7 +56,7 @@ namespace Cmf.CLI.Commands
             });
 
             // Add the handler
-            cmd.Handler = CommandHandler.Create<DirectoryInfo, string, string, List<string>>(Execute);
+            cmd.Handler = CommandHandler.Create<IDirectoryInfo, string, string, List<string>>(Execute);
         }
 
         /// <summary>
@@ -64,17 +67,20 @@ namespace Cmf.CLI.Commands
         /// <param name="iotVersion">New MES version for the IoT workflows & masterdata</param>
         /// <param name="iotPackagesToIgnore">IoT packages to ignore when updating the MES version of the tasks in IoT workflows</param>
         /// <exception cref="CliException"></exception>
-        public void Execute(DirectoryInfo packagePath, string MESVersion, string iotVersion, List<string> iotPackagesToIgnore)
+        public void Execute(IDirectoryInfo packagePath, string MESVersion, string iotVersion, List<string> iotPackagesToIgnore)
         {
             using var activity = ExecutionContext.ServiceProvider?.GetService<ITelemetryService>()?.StartExtendedActivity(this.GetType().Name);
 
-            var cmfPackagePaths = this.fileSystem.DirectoryInfo.Wrap(packagePath).GetFiles("cmfpackage.json", SearchOption.AllDirectories);
+            var cmfPackagePaths = packagePath.GetFiles("cmfpackage.json", SearchOption.AllDirectories);
 
             foreach (IFileInfo path in cmfPackagePaths)
             {
                 Log.Debug($"Processing {path.FullName}");
                 Execute(CmfPackage.Load(path), MESVersion, iotVersion, iotPackagesToIgnore);
             }
+
+            UpdateProjectConfig(packagePath, MESVersion);
+            UpdatePipelineFiles(packagePath, MESVersion);
         }
 
         /// <summary>
@@ -95,5 +101,64 @@ namespace Cmf.CLI.Commands
             // will save with new version
             cmfPackage.SaveCmfPackage();
         }
+
+        #region Utilities
+        private void UpdateProjectConfig(IDirectoryInfo packagePath, string MESVersion)
+        {
+            IFileInfo projectConfig = this.fileSystem.FileInfo.New($"{packagePath}/{CoreConstants.ProjectConfigFileName}");
+
+            if (projectConfig.Exists)
+            {
+                Log.Information($"Updating {CoreConstants.ProjectConfigFileName} file");
+
+                string text = fileSystem.File.ReadAllText(projectConfig.FullName);
+                foreach (string key in new string[] { "MESVersion", "NugetVersion", "TestScenariosNugetVersion" })
+                {
+                    text = MESBumpUtilities.UpdateJsonValue(text, key, MESVersion);
+                }
+
+                text = MESBumpUtilities.UpdateJsonValue(text, "ISOLocation", generateIsoLocation(MESVersion).Replace(@"\", @"\\"));
+                fileSystem.File.WriteAllText(projectConfig.FullName, text);
+            }
+        }
+
+        private void UpdatePipelineFiles(IDirectoryInfo packagePath, string MESVersion)
+        {
+            IDirectoryInfo variablesDir = this.fileSystem.DirectoryInfo.New($"{packagePath}/Builds/.vars");
+
+            if (variablesDir.Exists)
+            {
+                string[] filesToUpdate = this.fileSystem.Directory.GetFiles(variablesDir.FullName, "*.yml", SearchOption.TopDirectoryOnly);
+
+                foreach (string yamlFile in filesToUpdate)
+                {
+                    Log.Information($"Updating {yamlFile} file");
+                    string text = this.fileSystem.File.ReadAllText(yamlFile);
+
+                    text = Regex.Replace(
+                        text, 
+                        @"\\\\management\\Setups\\cmNavigo.+Optional Services\.iso",
+                        generateIsoLocation(MESVersion), 
+                        RegexOptions.IgnoreCase
+                    );
+
+                    text = Regex.Replace(
+                        text,
+                        @"@criticalmanufacturing\\mes:\d+\.\d+\.\d+", $"@criticalmanufacturing\\mes:{MESVersion}",
+                        RegexOptions.IgnoreCase
+                    );
+
+                    this.fileSystem.File.WriteAllText(yamlFile, text);
+                }
+            }
+        }
+
+        private string generateIsoLocation(string MESVersion)
+        {
+            Version version = new Version(MESVersion);
+            string majorMinor = $"{version.Major}.{version.Minor}";
+            return $@"\\management\Setups\cmNavigo\v{majorMinor}.x\Critical Manufacturing {MESVersion}-Optional Services.iso";
+        }
+        #endregion
     }
 }
