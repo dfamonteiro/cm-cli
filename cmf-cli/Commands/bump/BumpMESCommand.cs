@@ -155,7 +155,15 @@ namespace Cmf.CLI.Commands
 
                     text = Regex.Replace(
                         text,
-                        @"@criticalmanufacturing\\mes:\d+\.\d+\.\d+", $"@criticalmanufacturing\\mes:{MESVersion}",
+                        @"@criticalmanufacturing\\mes:\d+\.\d+\.\d+",
+                        $"@criticalmanufacturing\\mes:{MESVersion}",
+                        RegexOptions.IgnoreCase
+                    );
+
+                    text = Regex.Replace(
+                        text,
+                        @"refs\/tags\/\d+\.\d+\.\d+",
+                        $"refs/tags/{MESVersion}",
                         RegexOptions.IgnoreCase
                     );
 
