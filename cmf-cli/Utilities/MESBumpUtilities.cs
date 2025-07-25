@@ -94,6 +94,14 @@ namespace Cmf.CLI.Utilities
             }
         }
 
+        /// <summary>
+        /// Updates version references in IoT master data and automation workflow files
+        /// within a given package, skipping specific packages if configured.
+        /// </summary>
+        /// <param name="fileSystem">The file system abstraction used to access files.</param>
+        /// <param name="cmfPackage">The CMF package being processed.</param>
+        /// <param name="version">The new MES version.</param>
+        /// <param name="iotPackagesToIgnore">List of package names to ignore during the update (e.g., custom tasks).</param>
         public static void UpdateIoTMasterdatasAndWorkflows(IFileSystem fileSystem, CmfPackage cmfPackage, string version, List<string> iotPackagesToIgnore)
         {
             List<string> ignorePackages = new List<string>()
@@ -139,89 +147,116 @@ namespace Cmf.CLI.Utilities
             // Update the MES references that might be present in the mdl files
             foreach (string mdlPath in mdlFiles.Where(mdl => mdl.EndsWith(".json")))
             {
-                // Update some versions in several places in the masterdata
-                string text = fileSystem.File.ReadAllText(mdlPath);
-                foreach (string key in new string[] { "PackageVersion", "ControllerPackageVersion", "MonitorPackageVersion", "ManagerPackageVersion" })
-                {
-                    text = MESBumpUtilities.UpdateJsonValue(text, key, version);
-                }
-
-                // Updating the versions in <DM>AutomationController requires special handling
-                JObject packageJsonObject = JsonConvert.DeserializeObject<JObject>(text);
-
-                if (packageJsonObject.ContainsKey("<DM>AutomationController"))
-                {
-                    JObject automationControllers = packageJsonObject["<DM>AutomationController"] as JObject;
-
-                    foreach (var prop in automationControllers.Properties())
-                    {
-                        JObject controller = (JObject)prop.Value;
-                        string tasksLibraryPackagesRaw = controller["TasksLibraryPackages"]?.ToString();
-
-                        if (!string.IsNullOrWhiteSpace(tasksLibraryPackagesRaw))
-                        {
-                            // Parse the tasksLibraryPackages json list
-                            JArray tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(tasksLibraryPackagesRaw);
-
-                            // Version bump each package string
-                            for (int i = 0; i < tasksLibraryPackages.Count; i++)
-                            {
-                                string packageStr = tasksLibraryPackages[i]?.ToString();
-
-                                if (string.IsNullOrEmpty(packageStr))
-                                {
-                                    continue;
-                                }
-
-                                if (ignorePackages.Any(ignore => packageStr.Contains(ignore)))
-                                {
-                                    continue; // If there's a match with a package in the ignorePackages, skip the version bump
-                                }
-
-                                tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.+$", $"@{version}");
-                            }
-
-                            // Save it back into the controller object
-                            controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
-                        }
-                    }
-                }
-
-                fileSystem.File.WriteAllText(mdlPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
+                UpdateIoTMasterdata(mdlPath, fileSystem, cmfPackage, version, ignorePackages);
             }
 
             Log.Debug("Processing workflows...");
             // Update the IoT workflows
             foreach (string wflPath in workflowFiles.Where(path => path.EndsWith(".json")))
             {
-                Log.Debug($"  - {wflPath}");
-                string packageJson = fileSystem.File.ReadAllText(wflPath);
-                dynamic packageJsonObject = JsonConvert.DeserializeObject(packageJson);
-
-                foreach (var task in packageJsonObject?["tasks"])
-                {
-                    string name = (string)task["reference"]["package"]["name"];
-                    if (ignorePackages.Any(ignore => name.Contains(ignore)))
-                    {
-                        continue; // If there's a match with a package in the ignorePackages, skip the version bump
-                    }
-
-                    task["reference"]["package"]["version"] = version;
-                }
-
-                foreach (var converter in packageJsonObject?["converters"])
-                {
-                    string name = (string)converter["reference"]["package"]["name"];
-                    if (ignorePackages.Any(ignore => name.Contains(ignore)))
-                    {
-                        continue; // If there's a match with a package in the ignorePackages, skip the version bump
-                    }
-
-                    converter["reference"]["package"]["version"] = version;
-                }
-
-                fileSystem.File.WriteAllText(wflPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
+                UpdateIoTWorkflow(wflPath, fileSystem, cmfPackage, version, ignorePackages);
             }
+        }
+
+        /// <summary>
+        /// Updates version values in a given IoT master data (.json) file.
+        /// </summary>
+        /// <param name="mdlPath">Path to the master data file.</param>
+        /// <param name="fileSystem">The file system abstraction used to access files.</param>
+        /// <param name="cmfPackage">The CMF package that owns the master data.</param>
+        /// <param name="version">The new MES version.</param>
+        /// <param name="ignorePackages">List of task package names to ignore.</param>
+        private static void UpdateIoTMasterdata(string mdlPath, IFileSystem fileSystem, CmfPackage cmfPackage, string version, List<string> ignorePackages)
+        {
+            // Update some versions in several places in the masterdata
+            string text = fileSystem.File.ReadAllText(mdlPath);
+            foreach (string key in new string[] { "PackageVersion", "ControllerPackageVersion", "MonitorPackageVersion", "ManagerPackageVersion" })
+            {
+                text = MESBumpUtilities.UpdateJsonValue(text, key, version);
+            }
+
+            // Updating the versions in <DM>AutomationController requires special handling
+            JObject packageJsonObject = JsonConvert.DeserializeObject<JObject>(text);
+
+            if (packageJsonObject.ContainsKey("<DM>AutomationController"))
+            {
+                JObject automationControllers = packageJsonObject["<DM>AutomationController"] as JObject;
+
+                foreach (var prop in automationControllers.Properties())
+                {
+                    JObject controller = (JObject)prop.Value;
+                    string tasksLibraryPackagesRaw = controller["TasksLibraryPackages"]?.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(tasksLibraryPackagesRaw))
+                    {
+                        // Parse the tasksLibraryPackages json list
+                        JArray tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(tasksLibraryPackagesRaw);
+
+                        // Version bump each package string
+                        for (int i = 0; i < tasksLibraryPackages.Count; i++)
+                        {
+                            string packageStr = tasksLibraryPackages[i]?.ToString();
+
+                            if (string.IsNullOrEmpty(packageStr))
+                            {
+                                continue;
+                            }
+
+                            if (ignorePackages.Any(ignore => packageStr.Contains(ignore)))
+                            {
+                                continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                            }
+
+                            tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.+$", $"@{version}");
+                        }
+
+                        // Save it back into the controller object
+                        controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
+                    }
+                }
+            }
+
+            fileSystem.File.WriteAllText(mdlPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
+        }
+
+        /// <summary>
+        /// Updates the package version references in an IoT automation workflow file, 
+        /// skipping any package names included in the ignore list.
+        /// </summary>
+        /// <param name="wflPath">Path to the workflow .json file.</param>
+        /// <param name="fileSystem">The file system abstraction used to access files.</param>
+        /// <param name="cmfPackage">The CMF package that owns the workflow.</param>
+        /// <param name="version">The new MES version.</param>
+        /// <param name="ignorePackages">List of task package names to skip when applying the version update.</param>
+        private static void UpdateIoTWorkflow(string wflPath, IFileSystem fileSystem, CmfPackage cmfPackage, string version, List<string> ignorePackages)
+        {
+            Log.Debug($"  - {wflPath}");
+            string packageJson = fileSystem.File.ReadAllText(wflPath);
+            dynamic packageJsonObject = JsonConvert.DeserializeObject(packageJson);
+
+            foreach (var task in packageJsonObject?["tasks"])
+            {
+                string name = (string)task["reference"]["package"]["name"];
+                if (ignorePackages.Any(ignore => name.Contains(ignore)))
+                {
+                    continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                }
+
+                task["reference"]["package"]["version"] = version;
+            }
+
+            foreach (var converter in packageJsonObject?["converters"])
+            {
+                string name = (string)converter["reference"]["package"]["name"];
+                if (ignorePackages.Any(ignore => name.Contains(ignore)))
+                {
+                    continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                }
+
+                converter["reference"]["package"]["version"] = version;
+            }
+
+            fileSystem.File.WriteAllText(wflPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
         }
     }
 }
