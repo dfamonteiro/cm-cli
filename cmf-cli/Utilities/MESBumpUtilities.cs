@@ -9,7 +9,6 @@ using Cmf.CLI.Core.Objects;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using Cmf.CLI.Core.Enums;
-using System;
 
 namespace Cmf.CLI.Utilities
 {
@@ -183,41 +182,82 @@ namespace Cmf.CLI.Utilities
             {
                 JObject automationControllers = packageJsonObject["<DM>AutomationController"] as JObject;
 
-                foreach (var prop in automationControllers.Properties())
+                foreach (JProperty prop in automationControllers.Properties())
                 {
-                    JObject controller = (JObject)prop.Value;
-                    string tasksLibraryPackagesRaw = controller["TasksLibraryPackages"]?.ToString();
-
-                    if (!string.IsNullOrWhiteSpace(tasksLibraryPackagesRaw))
-                    {
-                        // Parse the tasksLibraryPackages json list
-                        JArray tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(tasksLibraryPackagesRaw);
-
-                        // Version bump each package string
-                        for (int i = 0; i < tasksLibraryPackages.Count; i++)
-                        {
-                            string packageStr = tasksLibraryPackages[i]?.ToString();
-
-                            if (string.IsNullOrEmpty(packageStr))
-                            {
-                                continue;
-                            }
-
-                            if (ignorePackages.Any(ignore => packageStr.Contains(ignore)))
-                            {
-                                continue; // If there's a match with a package in the ignorePackages, skip the version bump
-                            }
-
-                            tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.+$", $"@{version}");
-                        }
-
-                        // Save it back into the controller object
-                        controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
-                    }
+                    UpdateTaskLibraryPackageJson(prop, version, ignorePackages);
                 }
             }
 
             fileSystem.File.WriteAllText(mdlPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
+        }
+
+        /// <summary>
+        /// Updates the version of package strings listed in the "TasksLibraryPackages" field of a given <DM>AutomationController JSON property.
+        /// </summary>
+        /// <param name="prop">The JSON property representing a controller entry within the "<DM>AutomationController" object.</param>
+        /// <param name="version">The new version string to apply to all eligible package entries.</param>
+        /// <param name="ignorePackages"> A list of package name substrings to exclude from version updates.
+        /// Any package string that contains a substring from this list will be skipped.
+        /// </param>
+        /// <remarks>
+        /// The "TasksLibraryPackages" field may be stored either as a JSON array or as a stringified JSON array.
+        /// This method detects the format and updates the version suffix (e.g., "@11.1.3") for each package string,
+        /// while preserving the original format of the field (string or array). I have no idea why are two different
+        /// formats are allowed in this field, but now we're stuck supporting them both
+        /// </remarks>
+        private static void UpdateTaskLibraryPackageJson(JProperty prop, string version, List<string> ignorePackages)
+        {
+            JObject controller = (JObject)prop.Value;
+            JToken tasksLibraryPackagesToken = controller["TasksLibraryPackages"];
+
+            if (tasksLibraryPackagesToken == null || tasksLibraryPackagesToken.Type == JTokenType.Null)
+            {
+                return;
+            }
+
+            JArray tasksLibraryPackages = null;
+            bool wasStringFormat = false;
+
+            if (tasksLibraryPackagesToken.Type == JTokenType.String)
+            {
+                string rawString = tasksLibraryPackagesToken.ToString();
+                if (!string.IsNullOrWhiteSpace(rawString))
+                {
+                    tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(rawString);
+                    wasStringFormat = true;
+                }
+            }
+            else if (tasksLibraryPackagesToken.Type == JTokenType.Array)
+            {
+                tasksLibraryPackages = (JArray)tasksLibraryPackagesToken;
+            }
+
+            if (tasksLibraryPackages == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < tasksLibraryPackages.Count; i++)
+            {
+                string packageStr = tasksLibraryPackages[i]?.ToString();
+
+                if (string.IsNullOrEmpty(packageStr) || ignorePackages.Any(ignore => packageStr.Contains(ignore)))
+                {
+                    return;
+                }
+                tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.*$", $"@{version}");
+            }
+
+            if (wasStringFormat)
+            {
+                // Write back as a compact JSON string
+                controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
+            }
+            else
+            {
+                // Preserve original JArray structure
+                controller["TasksLibraryPackages"] = tasksLibraryPackages;
+            }
         }
 
         /// <summary>
