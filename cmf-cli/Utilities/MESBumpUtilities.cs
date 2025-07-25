@@ -9,6 +9,7 @@ using Cmf.CLI.Core.Objects;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using Cmf.CLI.Core.Enums;
+using System.Text.Json.Nodes;
 
 namespace Cmf.CLI.Utilities
 {
@@ -188,7 +189,7 @@ namespace Cmf.CLI.Utilities
                 }
             }
 
-            fileSystem.File.WriteAllText(mdlPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
+            SerializeWithOriginalIndentation(mdlPath, text, packageJsonObject, fileSystem);
         }
 
         /// <summary>
@@ -297,23 +298,33 @@ namespace Cmf.CLI.Utilities
                 converter["reference"]["package"]["version"] = version;
             }
 
-            // Write the JSON file while preserving the original indentation
+            SerializeWithOriginalIndentation(wflPath, packageJson, packageJsonObject, fileSystem);
+        }
 
+        /// <summary>
+        /// Write the JSON file while preserving the original indentation.
+        /// </summary>
+        /// <param name="jsonPath">Path of the JSON file.</param>
+        /// <param name="jsonText">Contents of the JSON file in string form.</param>
+        /// <param name="jsonObject">Contents of the JSON file in JObject form.</param>
+        /// <param name="fileSystem">The file system abstraction used to access files.</param>
+        private static void SerializeWithOriginalIndentation(string jsonPath, string jsonText, JObject jsonObject, IFileSystem fileSystem)
+        {
             // Get the leading whitespace of the second JSON line (it should have exactly one level of indentation)
-            string originalIndentation = Regex.Match(packageJson.Split('\n')[1], @"^\s*").Value;
+            string originalIndentation = Regex.Match(jsonText.Split('\n')[1], @"^\s*").Value;
 
             StringWriter stringWriter = new StringWriter();
             JsonTextWriter jsonWriter = new JsonTextWriter(stringWriter)
             {
-                Formatting  = Formatting.Indented,
+                Formatting = Formatting.Indented,
                 Indentation = originalIndentation.Length,
-                IndentChar  = originalIndentation[0],
+                IndentChar = originalIndentation[0],
             };
 
             JsonSerializer serializer = new JsonSerializer();
-            serializer.Serialize(jsonWriter, packageJsonObject);
+            serializer.Serialize(jsonWriter, jsonObject);
 
-            fileSystem.File.WriteAllText(wflPath, stringWriter.ToString());
+            fileSystem.File.WriteAllText(jsonPath, stringWriter.ToString());
         }
     }
 }
