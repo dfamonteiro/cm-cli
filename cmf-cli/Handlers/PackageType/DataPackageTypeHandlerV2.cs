@@ -95,6 +95,13 @@ namespace Cmf.CLI.Handlers
         {
             base.MESBump(version, iotVersion, iotPackagesToIgnore);
             MESBumpUtilities.UpdateCSharpProject(this.fileSystem, this.CmfPackage, version, true);
+
+            if (iotVersion == null)
+            {
+                return;
+            }
+
+            MESBumpUtilities.UpdateIoTMasterdatasAndWorkflows(this.fileSystem, this.CmfPackage, iotVersion, iotPackagesToIgnore);
         }
 
         /// <summary>

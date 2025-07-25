@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -5,6 +6,9 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Cmf.CLI.Core;
 using Cmf.CLI.Core.Objects;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using Cmf.CLI.Core.Enums;
 
 namespace Cmf.CLI.Utilities
 {
@@ -87,6 +91,136 @@ namespace Cmf.CLI.Utilities
                 }, RegexOptions.IgnoreCase);
 
                 fileSystem.File.WriteAllText(filePath, text);
+            }
+        }
+
+        public static void UpdateIoTMasterdatasAndWorkflows(IFileSystem fileSystem, CmfPackage cmfPackage, string version, List<string> iotPackagesToIgnore)
+        {
+            List<string> ignorePackages = new List<string>()
+            {
+                "@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks", // SMT Template
+                "@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks", // SMT Template
+                "@criticalmanufacturing/connect-iot-utilities-semi-tasks", // Semi Template
+            };
+            ignorePackages.AddRange(iotPackagesToIgnore ?? []);
+
+            // Useful debug info
+            Log.Debug("Packages that will be ignored:");
+            ignorePackages.ForEach(pkg => Log.Debug($"  - {pkg}"));
+
+            List<string> mdlFiles = new List<string>();
+            List<string> workflowFiles = new List<string>();
+
+            foreach (ContentToPack contentToPack in cmfPackage.ContentToPack ?? [])
+            {
+                if (contentToPack.ContentType == ContentType.MasterData)
+                {
+                    mdlFiles.AddRange(fileSystem.Directory.GetFiles(
+                        cmfPackage.GetFileInfo().DirectoryName,
+                        contentToPack.Source,
+                        SearchOption.AllDirectories
+                    ));
+                }
+                else if (contentToPack.ContentType == ContentType.AutomationWorkFlows)
+                {
+                    workflowFiles.AddRange(fileSystem.Directory.GetFiles(
+                        cmfPackage.GetFileInfo().DirectoryName,
+                        contentToPack.Source,
+                        SearchOption.AllDirectories
+                    ));
+                }
+            }
+
+            if (mdlFiles.Where(mdl => !mdl.EndsWith(".json")).Any())
+            {
+                Log.Warning("Only .json masterdata files will be updated");
+            }
+
+            // Update the MES references that might be present in the mdl files
+            foreach (string mdlPath in mdlFiles.Where(mdl => mdl.EndsWith(".json")))
+            {
+                // Update some versions in several places in the masterdata
+                string text = fileSystem.File.ReadAllText(mdlPath);
+                foreach (string key in new string[] { "PackageVersion", "ControllerPackageVersion", "MonitorPackageVersion", "ManagerPackageVersion" })
+                {
+                    text = MESBumpUtilities.UpdateJsonValue(text, key, version);
+                }
+
+                // Updating the versions in <DM>AutomationController requires special handling
+                JObject packageJsonObject = JsonConvert.DeserializeObject<JObject>(text);
+
+                if (packageJsonObject.ContainsKey("<DM>AutomationController"))
+                {
+                    JObject automationControllers = packageJsonObject["<DM>AutomationController"] as JObject;
+
+                    foreach (var prop in automationControllers.Properties())
+                    {
+                        JObject controller = (JObject)prop.Value;
+                        string tasksLibraryPackagesRaw = controller["TasksLibraryPackages"]?.ToString();
+
+                        if (!string.IsNullOrWhiteSpace(tasksLibraryPackagesRaw))
+                        {
+                            // Parse the tasksLibraryPackages json list
+                            JArray tasksLibraryPackages = JsonConvert.DeserializeObject<JArray>(tasksLibraryPackagesRaw);
+
+                            // Version bump each package string
+                            for (int i = 0; i < tasksLibraryPackages.Count; i++)
+                            {
+                                string packageStr = tasksLibraryPackages[i]?.ToString();
+
+                                if (string.IsNullOrEmpty(packageStr))
+                                {
+                                    continue;
+                                }
+
+                                if (ignorePackages.Any(ignore => packageStr.Contains(ignore)))
+                                {
+                                    continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                                }
+
+                                tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.+$", $"@{version}");
+                            }
+
+                            // Save it back into the controller object
+                            controller["TasksLibraryPackages"] = JsonConvert.SerializeObject(tasksLibraryPackages, Formatting.None);
+                        }
+                    }
+                }
+
+                fileSystem.File.WriteAllText(mdlPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
+            }
+
+            Log.Debug("Processing workflows...");
+            // Update the IoT workflows
+            foreach (string wflPath in workflowFiles.Where(path => path.EndsWith(".json")))
+            {
+                Log.Debug($"  - {wflPath}");
+                string packageJson = fileSystem.File.ReadAllText(wflPath);
+                dynamic packageJsonObject = JsonConvert.DeserializeObject(packageJson);
+
+                foreach (var task in packageJsonObject?["tasks"])
+                {
+                    string name = (string)task["reference"]["package"]["name"];
+                    if (ignorePackages.Any(ignore => name.Contains(ignore)))
+                    {
+                        continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                    }
+
+                    task["reference"]["package"]["version"] = version;
+                }
+
+                foreach (var converter in packageJsonObject?["converters"])
+                {
+                    string name = (string)converter["reference"]["package"]["name"];
+                    if (ignorePackages.Any(ignore => name.Contains(ignore)))
+                    {
+                        continue; // If there's a match with a package in the ignorePackages, skip the version bump
+                    }
+
+                    converter["reference"]["package"]["version"] = version;
+                }
+
+                fileSystem.File.WriteAllText(wflPath, JsonConvert.SerializeObject(packageJsonObject, Formatting.Indented));
             }
         }
     }
