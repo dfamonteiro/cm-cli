@@ -64,7 +64,7 @@ namespace Cmf.CLI.Utilities
         /// <param name="cmfPackage">The CMF package object containing the root directory path.</param>
         /// <param name="version">The new MES version.</param>
         /// <param name="strictMatching">
-        ///     If true, only references to Cmf.Navigo, Cmf.Foundation and Cmf.MessageBus packages will be updated.
+        ///     If true, only references to Cmf.Navigo, Cmf.Foundation, Cmf.MessageBus and Cmf.Common.CustomActionUtilities packages will be updated.
         ///     If false, all packages starting with Cmf. will be updated.
         /// </param>
         public static void UpdateCSharpProject(IFileSystem fileSystem, CmfPackage cmfPackage, string version, bool strictMatching)
@@ -75,7 +75,7 @@ namespace Cmf.CLI.Utilities
             if (strictMatching)
             {
                 // Only update Cmf.Navigo and Cmf.Foundation references
-                pattern = @"(Include=""Cmf\.(?:Navigo|Foundation|MessageBus)[^""]*""\s+Version="")(.*?)(""[\s/>])";
+                pattern = @"(Include=""Cmf\.(?:Navigo|Foundation|MessageBus|Common\.CustomActionUtilities|)[^""]*""\s+Version="")(.*?)(""[\s/>])";
             }
             else
             {
@@ -122,6 +122,12 @@ namespace Cmf.CLI.Utilities
 
             foreach (ContentToPack contentToPack in cmfPackage.ContentToPack ?? [])
             {
+                if (contentToPack.Source?.Contains(@"$(version)") ?? false)
+                {
+                    Log.Warning("Source paths with \"$(version)\" in cmf packages will be ignored");
+                    continue;
+                }
+
                 if (contentToPack.ContentType == ContentType.MasterData)
                 {
                     mdlFiles.AddRange(fileSystem.Directory.GetFiles(

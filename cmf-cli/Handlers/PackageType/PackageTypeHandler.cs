@@ -529,10 +529,9 @@ namespace Cmf.CLI.Handlers
                 // Find the dependency and update version
                 foreach (JObject dep in (JArray)jsonObject["dependencies"])
                 {
-                    if (dep["id"]?.ToString() == "Cmf.Environment" || dep["id"]?.ToString() == "criticalmanufacturing.deploymentmetadata")
+                    if (dep["id"]?.ToString() == "Cmf.Environment" || dep["id"]?.ToString().ToLower() == "criticalmanufacturing.deploymentmetadata")
                     {
                         dep["version"] = version;
-                        break;
                     }
                 }
             }
