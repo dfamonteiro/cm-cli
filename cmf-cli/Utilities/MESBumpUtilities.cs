@@ -326,7 +326,17 @@ namespace Cmf.CLI.Utilities
         private static void SerializeWithOriginalIndentation(string jsonPath, string jsonText, JObject jsonObject, IFileSystem fileSystem)
         {
             // Get the leading whitespace of the second JSON line (it should have exactly one level of indentation)
-            string originalIndentation = Regex.Match(jsonText.Split('\n')[1], @"^\s*").Value;
+            string secondLine = jsonText.Split('\n')[1];
+
+            string originalIndentation;
+            if ((secondLine.StartsWith(' ') || secondLine.StartsWith('\t')) && secondLine.Length > 0)
+            {
+                originalIndentation = Regex.Match(secondLine, @"^\s*").Value;
+            }
+            else
+            {
+                originalIndentation = "  "; // Fallback indentation: two spaces
+            }
 
             StringWriter stringWriter = new StringWriter();
             JsonTextWriter jsonWriter = new JsonTextWriter(stringWriter)
