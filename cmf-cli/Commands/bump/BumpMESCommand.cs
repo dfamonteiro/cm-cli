@@ -80,7 +80,8 @@ namespace Cmf.CLI.Commands
             }
 
             UpdateProjectConfig(packagePath, MESVersion);
-            UpdatePipelineFiles(packagePath, MESVersion);
+            UpdatePipelineFiles($"{packagePath}/Builds/.vars", MESVersion);
+            UpdatePipelineFiles($"EnvironmentConfigs", MESVersion);
         }
 
         /// <summary>
@@ -130,9 +131,9 @@ namespace Cmf.CLI.Commands
         /// </summary>
         /// <param name="packagePath">The package path.</param>
         /// <param name="MESVersion">The new MES version.</param>
-        private void UpdatePipelineFiles(IDirectoryInfo packagePath, string MESVersion)
+        private void UpdatePipelineFiles(string packagePath, string MESVersion)
         {
-            IDirectoryInfo variablesDir = this.fileSystem.DirectoryInfo.New($"{packagePath}/Builds/.vars");
+            IDirectoryInfo variablesDir = this.fileSystem.DirectoryInfo.New(packagePath);
 
             if (variablesDir.Exists)
             {
