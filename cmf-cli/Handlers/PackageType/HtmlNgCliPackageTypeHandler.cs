@@ -10,6 +10,7 @@ using Cmf.CLI.Commands.html;
 using Cmf.CLI.Commands.restore;
 using Cmf.CLI.Constants;
 using Cmf.CLI.Core;
+using Cmf.CLI.Core.Constants;
 using Cmf.CLI.Core.Enums;
 using Cmf.CLI.Core.Objects;
 using Cmf.CLI.Utilities;
@@ -170,6 +171,23 @@ namespace Cmf.CLI.Handlers
         {
             base.MESBump(version, iotVersion, iotPackagesToIgnore);
             MESBumpUtilities.UpdateNPMProject(this.fileSystem, this.CmfPackage, version);
+
+            IFileInfo projectConfig = this.fileSystem.FileInfo.New($"{this.CmfPackage.GetFileInfo().DirectoryName}/src/assets/config.json");
+            if (projectConfig.Exists)
+            {
+                Log.Information($"Updating /src/assets/config.json file");
+
+                string text = fileSystem.File.ReadAllText(projectConfig.FullName);
+                JObject configObject = JsonConvert.DeserializeObject<JObject>(text);
+
+                if (configObject.ContainsKey("version"))
+                {
+                    string configVersion = (string)configObject["version"];
+                    configObject["version"] = Regex.Replace(configVersion, @"\d+\.\d+\.\d+", version);
+                }
+
+                fileSystem.File.WriteAllText(projectConfig.FullName, JsonConvert.SerializeObject(configObject, Formatting.Indented));
+            }
         }
 
         // TODO: enable this when we can transform config.json
