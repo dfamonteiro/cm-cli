@@ -160,6 +160,13 @@ namespace Cmf.CLI.Commands
 
                     text = Regex.Replace(
                         text,
+                        @"@criticalmanufacturing\\connectiot-manager:\d+\.\d+\.\d+",
+                        $"@criticalmanufacturing\\connectiot-manager:{MESVersion}",
+                        RegexOptions.IgnoreCase
+                    );
+
+                    text = Regex.Replace(
+                        text,
                         @"refs\/tags\/\d+\.\d+\.\d+",
                         $"refs/tags/{MESVersion}",
                         RegexOptions.IgnoreCase
