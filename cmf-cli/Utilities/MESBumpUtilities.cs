@@ -65,7 +65,7 @@ namespace Cmf.CLI.Utilities
         /// <param name="version">The new MES version.</param>
         /// <param name="strictMatching">
         ///     If true, only references to Cmf.Navigo, Cmf.Foundation, Cmf.MessageBus and Cmf.Common.CustomActionUtilities packages will be updated.
-        ///     If false, all packages starting with Cmf. will be updated.
+        ///     If false, all packages starting with Cmf. will be updated, (excluding Cmf.Common.TestUtilities).
         /// </param>
         public static void UpdateCSharpProject(IFileSystem fileSystem, CmfPackage cmfPackage, string version, bool strictMatching)
         {
@@ -79,8 +79,8 @@ namespace Cmf.CLI.Utilities
             }
             else
             {
-                // Only update Cmf.* references
-                pattern = @"(Include=""Cmf\.[^""]*""\s+Version="")(.*?)(""[\s/>])";
+                // Only update Cmf.* references (excluding Cmf.Common.TestUtilities)
+                pattern = @"(Include=""Cmf\.(?!Common\.TestUtilities)[^""]*""\s+Version="")(.*?)(""[\s/>])";
             }
 
             foreach (string filePath in filesToUpdate)
