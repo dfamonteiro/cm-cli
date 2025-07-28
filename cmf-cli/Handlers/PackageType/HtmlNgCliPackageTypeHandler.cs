@@ -175,7 +175,7 @@ namespace Cmf.CLI.Handlers
             IFileInfo projectConfig = this.fileSystem.FileInfo.New($"{this.CmfPackage.GetFileInfo().DirectoryName}/src/assets/config.json");
             if (projectConfig.Exists)
             {
-                Log.Information($"Updating /src/assets/config.json file");
+                Log.Information($"Updating src/assets/config.json file");
 
                 string text = fileSystem.File.ReadAllText(projectConfig.FullName);
                 JObject configObject = JsonConvert.DeserializeObject<JObject>(text);

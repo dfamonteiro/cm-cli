@@ -205,7 +205,7 @@ namespace Cmf.CLI.Handlers
 
             if (config.Exists)
             {
-                Log.Debug($"Updating {config}");
+                Log.Debug($"Updating src/assets/config.json");
 
                 string text = fileSystem.File.ReadAllText(config.FullName);
                 text = MESBumpUtilities.UpdateJsonValue(text, "version", version);
