@@ -282,6 +282,15 @@ namespace Cmf.CLI.Utilities
             string packageJson = fileSystem.File.ReadAllText(wflPath);
             dynamic packageJsonObject = JsonConvert.DeserializeObject(packageJson);
 
+            if (!packageJsonObject.ContainsKey("tasks"))
+            {
+                throw new CliException(string.Format(CoreMessages.MissingMandatoryPropertyInFile, "tasks", wflPath));
+            }
+            if (!packageJsonObject.ContainsKey("converters"))
+            {
+                throw new CliException(string.Format(CoreMessages.MissingMandatoryPropertyInFile, "converters", wflPath));
+            }
+
             foreach (var task in packageJsonObject?["tasks"])
             {
                 string name = (string)task["reference"]["package"]["name"];
