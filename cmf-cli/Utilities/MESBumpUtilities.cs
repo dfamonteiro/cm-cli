@@ -342,7 +342,7 @@ namespace Cmf.CLI.Utilities
             JsonTextWriter jsonWriter = new JsonTextWriter(stringWriter)
             {
                 Formatting = Formatting.Indented,
-                Indentation = originalIndentation.Length,
+                Indentation = originalIndentation[0] == '\t' ? 1 : originalIndentation.Length, // if the indentation char is a tab, force the value to be 1
                 IndentChar = originalIndentation[0],
             };
 
