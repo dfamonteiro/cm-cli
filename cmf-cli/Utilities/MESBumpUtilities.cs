@@ -250,7 +250,7 @@ namespace Cmf.CLI.Utilities
 
                 if (string.IsNullOrEmpty(packageStr) || ignorePackages.Any(ignore => packageStr.Contains(ignore)))
                 {
-                    return;
+                    continue;
                 }
                 tasksLibraryPackages[i] = Regex.Replace(packageStr, @"@\d+.*$", $"@{version}");
             }
