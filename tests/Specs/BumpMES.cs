@@ -6,11 +6,15 @@ using Cmf.CLI.Core.Objects;
 using Cmf.CLI.Factories;
 using Cmf.CLI.Handlers;
 using FluentAssertions;
+using FluentAssertions.Common;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace tests.Specs;
@@ -53,8 +57,6 @@ public class BumpMES
             }
         });
 
-        fileSystem.Directory.SetCurrentDirectory(fileSystem.FileInfo.New(projectConfigPath).DirectoryName);
-
         BumpMESCommand cmd = new BumpMESCommand(fileSystem);
         cmd.Execute(fileSystem.FileInfo.New(projectConfigPath).Directory, "11.1.6", "11.1.6", []);
 
@@ -65,5 +67,65 @@ public class BumpMES
             @"""NugetVersion"": ""11.1.6"",",
             @"""TestScenariosNugetVersion"": ""11.1.6"",",
         ]);
+        Assert.Equal(3, Regex.Matches(projectConfigContents, @"11\.1\.6").Count);
+    }
+
+    [Theory]
+    [InlineData(@"c:\\Builds\.vars\global.yml", "10.2.12")]
+    [InlineData(@"c:\\Builds\.vars\abc.yml", "10.2.12")]
+    [InlineData(@"c:\\EnvironmentConfigs\global.yml", "11.1.6")]
+    public void BumpMES_PipelineFiles(string path, string version)
+    {
+        var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+        {
+            {
+                MockUnixSupport.Path(path),
+                new MockFileData(
+                    @"variables:
+                        CIPublishArtifacts: 'a\b\c'
+                        CIPackages: 'a\b\c'
+                        ApprovedPackages: 'a\b\c'
+                        CmfCliRepository: 'https://registry.npmjs.com/'
+                        CmfCliVersion: 'latest'
+                        CmfCliPath: '$(Agent.TempDirectory)/node_modules/.bin/cmf-cli'
+                        CmfPipelineRepository: 'abc'
+                        CmfPipelineVersion: 'latest'
+                        CmfPipelinePath: '$(Agent.TempDirectory)/node_modules/.bin/@criticalmanufacturing/pipeline'
+
+                        ISOImagePath: '\\management\Setups\cmNavigo\v11.1.x\Critical Manufacturing 10.2.4.iso'
+                        CommonBranch: 'refs/tags/10.2.5'
+
+                        DeploymentPackage: '@criticalmanufacturing\mes:10.2.2'
+                        IoTPackage: '@criticalmanufacturing\connectiot-manager:10.2.1'
+                        "
+                )
+            }
+        });
+
+        BumpMESCommand cmd = new BumpMESCommand(fileSystem);
+        cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, version, []);
+        
+        string projectConfigContents = fileSystem.File.ReadAllText(path);
+
+        projectConfigContents.Should().ContainAll([
+            $@"CommonBranch: 'refs/tags/{version}'",
+            $@"DeploymentPackage: '@criticalmanufacturing\mes:{version}'",
+            $@"IoTPackage: '@criticalmanufacturing\connectiot-manager:{version}'",
+        ]);
+
+        int major = new Version(version).Major;
+        int minor = new Version(version).Minor;
+        string optionalServices = "";
+
+        if (major > 10)
+        {
+            optionalServices = "-Optional Services";
+        }
+
+        projectConfigContents.Should().Contain(
+            $@"ISOImagePath: '\\management\Setups\cmNavigo\v{major}.{minor}.x\Critical Manufacturing {version}{optionalServices}.iso'"
+        );
+
+        Assert.Equal(4, Regex.Matches(projectConfigContents, version.Replace(".", "\\.")).Count);
     }
 }
