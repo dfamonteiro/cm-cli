@@ -53,12 +53,6 @@ public class BumpMES
             }
         });
 
-
-        ExecutionContext.ServiceProvider = (new ServiceCollection())
-            .AddSingleton<IProjectConfigService>(new ProjectConfigService())
-            .BuildServiceProvider();
-        ExecutionContext.Initialize(fileSystem);
-
         fileSystem.Directory.SetCurrentDirectory(fileSystem.FileInfo.New(projectConfigPath).DirectoryName);
 
         BumpMESCommand cmd = new BumpMESCommand(fileSystem);
