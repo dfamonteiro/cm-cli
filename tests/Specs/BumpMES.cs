@@ -258,4 +258,147 @@ public class BumpMES
         ]);
         Assert.Equal(7, Regex.Matches(csprojContents, version.Replace(".", "\\.")).Count);
     }
+
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void BumpMES_DataPackage(bool iotShouldBeUpdated)
+    {
+        string version = "11.1.6";
+
+        var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+        {
+            {
+                MockUnixSupport.Path(@"c:\\cmfpackage.json"),
+                new MockFileData(
+                    @"{
+                      ""packageId"": ""Cmf.SMT.Data"",
+                      ""version"": ""3.2.0"",
+                      ""description"": ""Data Package"",
+                      ""packageType"": ""Data"",
+                      ""isInstallable"": true,
+                      ""isUniqueInstall"": true,
+                      ""contentToPack"": [
+                        {
+                          ""source"": ""DEEs\\*"",
+                          ""target"": ""DeeRules"",
+                          ""ignoreFiles"": [
+                            ""app.config"",
+                            ""Cmf.SMT.Actions.csproj""
+                          ],
+                          ""contentType"": ""DEE""
+                        },
+                        {
+                          ""source"": ""DEEs\\ProcessRules\\EntityTypes\\*"",
+                          ""target"": ""DeeRules\\ProcessRules\\EntityTypes\\"",
+                          ""contentType"": ""EntityTypes""
+                        },
+                        {
+                          ""source"": ""DEEs\\ProcessRules\\Before\\*"",
+                          ""target"": ""DeeRules\\ProcessRules\\Before"",
+                          ""contentType"": ""ProcessRulesPre""
+                        },
+                        {
+                          ""source"": ""MasterData\\*"",
+                          ""target"": ""MasterData\\"",
+                          ""contentType"": ""MasterData""
+                        },
+                        {
+                          ""source"": ""DEEs\\ProcessRules\\After\\*"",
+                          ""target"": ""DeeRules\\ProcessRules\\After"",
+                          ""contentType"": ""ProcessRulesPost""
+                        }
+                      ]
+                    }"
+                )
+            },
+            {
+                MockUnixSupport.Path(@"c:\\DEEs\a.b.c.csproj"),
+                new MockFileData(
+                    @"
+                    <Project Sdk=""Microsoft.NET.Sdk"">
+                    	<ItemGroup>
+		                    <PackageReference Include=""Cmf.MessageBus.Client"" Version=""11.1.5"" />
+                    	</ItemGroup>
+                    </Project>
+                    "
+                )
+            },
+            {
+                MockUnixSupport.Path(@"c:\\MasterData\a.json"),
+                new MockFileData(
+                    @"{
+                      ""<DM>AutomationProtocol"": {
+                        ""1"": {
+                          ""Name"": ""TCPIP_Protocol"",
+                          ""Description"": ""TCPIP_Protocol"",
+                          ""IsTemplate"": ""No"",
+                          ""Type"": ""General"",
+                          ""Package"": ""@criticalmanufacturing/connect-iot-driver-tcpip"",
+                          ""PackageVersion"": ""11.0.2"",
+                          ""ExtendedDataDefinition"": """",
+                          ""HasCommands"": ""Yes"",
+                          ""HasEvents"": ""Yes"",
+                          ""HasProperties"": ""Yes"",
+                          ""EntityPicture"": """"
+                        }
+                      },
+                      ""<DM>AutomationManager"": {
+                        ""1"": {
+                          ""Name"": ""ASYS_Manager"",
+                          ""IsTemplate"": ""No"",
+                          ""Description"": """",
+                          ""Type"": ""General"",
+                          ""LogicalAddress"": ""ASYS_Manager"",
+                          ""MonitorPackageVersion"": ""11.1.3"",
+                          ""ManagerPackageVersion"": ""11.1.5"",
+                          ""Configuration"": """"
+                        }
+                      },
+                      ""<DM>AutomationController"": {
+                        ""1"": {
+                          ""Name"": ""ASYS_Controller"",
+                          ""Description"": """",
+                          ""IsTemplate"": ""No"",
+                          ""Type"": ""General"",
+                          ""ControllerPackageVersion"": ""11.1.5"",
+                          ""ObjectType"": ""Resource"",
+                          ""TasksPackages"": ""[\""connect-iot-controller-engine-core-tasks\"",\""connect-iot-controller-engine-custom-utilities-tasks\""]"",
+                          ""Scope"": ""ConnectIoT"",
+                          ""AutomaticCheckpoints"": """",
+                          ""Timeout"": """",
+                          ""EntityPicture"": """",
+                          ""LinkConnector"": ""Rounded"",
+                          ""LinkRouter"": ""Metro"",
+                          ""TasksLibraryPackages"": ""[\""@criticalmanufacturing/connect-iot-controller-engine-core-tasks@11.1.5\""]"",
+                          ""DefaultWorkflowType"": ""DataFlow""
+                        }
+                      }
+                    }"
+                )
+            }
+        });
+
+        BumpMESCommand cmd = new BumpMESCommand(fileSystem);
+        cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, iotShouldBeUpdated ? version : null, []);
+
+        string csprojContents = fileSystem.File.ReadAllText(@"c:\\DEEs\a.b.c.csproj");
+        csprojContents.Should().Contain(
+            $@"<PackageReference Include=""Cmf.MessageBus.Client"" Version=""{version}"" />"
+        );
+
+        if (iotShouldBeUpdated)
+        {
+            string mdlContents = fileSystem.File.ReadAllText(@"c:\\MasterData\a.json");
+            mdlContents.Should().ContainAll([
+                $@"""PackageVersion"": ""{version}""",
+                $@"""MonitorPackageVersion"": ""{version}""",
+                $@"""ManagerPackageVersion"": ""{version}""",
+                $@"""ControllerPackageVersion"": ""{version}""",
+                $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{version}"
+            ]);
+            Assert.Equal(5, Regex.Matches(mdlContents, version.Replace(".", "\\.")).Count);
+        }
+    }
 }
