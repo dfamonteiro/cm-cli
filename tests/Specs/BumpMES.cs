@@ -115,12 +115,7 @@ public class BumpMES
 
         int major = new Version(version).Major;
         int minor = new Version(version).Minor;
-        string optionalServices = "";
-
-        if (major > 10)
-        {
-            optionalServices = "-Optional Services";
-        }
+        string optionalServices = major <= 10 ? "" : "-Optional Services";
 
         projectConfigContents.Should().Contain(
             $@"ISOImagePath: '\\management\Setups\cmNavigo\v{major}.{minor}.x\Critical Manufacturing {version}{optionalServices}.iso'"
