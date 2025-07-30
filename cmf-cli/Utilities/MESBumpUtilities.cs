@@ -74,8 +74,8 @@ namespace Cmf.CLI.Utilities
             string pattern;
             if (strictMatching)
             {
-                // Only update Cmf.Navigo and Cmf.Foundation references
-                pattern = @"(Include=""Cmf\.(?:Navigo|Foundation|MessageBus|Common\.CustomActionUtilities|)[^""]*""\s+Version="")(.*?)(""[\s/>])";
+                // Only update Cmf.Navigo, Cmf.Foundation, Cmf.MessageBus and Cmf.Common.CustomActionUtilities references
+                pattern = @"(Include=""Cmf\.(?:Navigo|Foundation|MessageBus|Common\.CustomActionUtilities)[^""]*""\s+Version="")(.*?)(""[\s/>])";
             }
             else
             {
