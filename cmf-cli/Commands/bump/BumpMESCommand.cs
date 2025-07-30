@@ -26,6 +26,22 @@ namespace Cmf.CLI.Commands
     [CmfCommand(name: "mes", Id = "bump_mes", ParentId = "bump")]
     public class BumpMESCommand : BaseCommand
     {
+        
+        /// <summary>
+        /// constructor for System.IO filesystem
+        /// </summary>
+        public BumpMESCommand() : base()
+        {
+        }
+
+        /// <summary>
+        /// constructor
+        /// </summary>
+        /// <param name="fileSystem"></param>
+        public BumpMESCommand(IFileSystem fileSystem) : base(fileSystem)
+        {
+        }
+
         /// <summary>
         /// Configure command
         /// </summary>
@@ -48,7 +64,7 @@ namespace Cmf.CLI.Commands
             ));
 
             cmd.AddOption(new Option<List<string>>(
-                aliases: new string[] {"-ignore", "--iotPackagesToIgnore" },
+                aliases: new string[] { "-ignore", "--iotPackagesToIgnore" },
                 description: "IoT packages to ignore when updating the MES version of the tasks in IoT workflows"
             )
             {
