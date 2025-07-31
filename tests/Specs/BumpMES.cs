@@ -395,7 +395,7 @@ public class BumpMES
                           ""Type"": ""General"",
                           ""ControllerPackageVersion"": ""11.1.5"",
                           ""ObjectType"": ""Resource"",
-                          ""TasksPackages"": ""[\""connect-iot-controller-engine-core-tasks\"",\""connect-iot-controller-engine-custom-utilities-tasks\""]"",
+                          ""TasksPackages"": ""[]"",
                           ""Scope"": ""ConnectIoT"",
                           ""AutomaticCheckpoints"": """",
                           ""Timeout"": """",
@@ -406,7 +406,38 @@ public class BumpMES
                             ""@criticalmanufacturing/ignore-this-package@11.1.5""
                             ],
                           ""DefaultWorkflowType"": ""DataFlow""
-                        }
+                        },
+                        ""3"": {
+                          ""Name"": ""Test_Controller"",
+                          ""Description"": """",
+                          ""IsTemplate"": ""No"",
+                          ""Type"": ""General"",
+                          ""ObjectType"": ""Resource"",
+                          ""TasksPackages"": ""[]"",
+                          ""Scope"": ""ConnectIoT"",
+                          ""AutomaticCheckpoints"": """",
+                          ""Timeout"": """",
+                          ""EntityPicture"": """",
+                          ""LinkConnector"": ""Rounded"",
+                          ""LinkRouter"": ""Metro"",
+                          ""DefaultWorkflowType"": ""DataFlow""
+                        },
+                        ""4"": {
+                          ""Name"": ""Test_Controller"",
+                          ""Description"": """",
+                          ""IsTemplate"": ""No"",
+                          ""Type"": ""General"",
+                          ""ObjectType"": ""Resource"",
+                          ""TasksPackages"": ""[]"",
+                          ""Scope"": ""ConnectIoT"",
+                          ""AutomaticCheckpoints"": """",
+                          ""Timeout"": """",
+                          ""EntityPicture"": """",
+                          ""LinkConnector"": ""Rounded"",
+                          ""LinkRouter"": ""Metro"",
+                          ""TasksLibraryPackages"": """",
+                          ""DefaultWorkflowType"": ""DataFlow""
+                        },
                       }
                     }"
                 )
