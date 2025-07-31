@@ -604,8 +604,8 @@ public class BumpMES
             workflowJsonObject["converters"][1]["reference"]["package"]["version"].ToString().Should().Be("1.2.3");
 
             Assert.Equal(3, Regex.Matches(wflContents, iotVersion.Replace(".", "\\.")).Count);
-            Assert.Single(Regex.Matches(wflContents, "11.1.5".Replace(".", "\\.")));
-            Assert.Single(Regex.Matches(wflContents, "1.2.3".Replace(".", "\\.")));
+            Assert.Single(Regex.Matches(wflContents, "11.1.5".Replace(".", "\\."))); // Ignored task
+            Assert.Single(Regex.Matches(wflContents, "1.2.3".Replace(".", "\\."))); // Ignored converter
             #endregion IoT Workflow validations
         }
     }
