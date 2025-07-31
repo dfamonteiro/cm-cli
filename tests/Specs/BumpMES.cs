@@ -583,7 +583,7 @@ public class BumpMES
                 $@"""ControllerPackageVersion"": ""{iotVersion}""",
                 $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{iotVersion}",
                 $@"@criticalmanufacturing/connect-iot-random@{iotVersion}",
-                $@"@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks@5.4.3",
+                $@"@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks@5.4.3", // The industry templates iot packages should remain unchanged
                 $@"@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks@5.4.3",
                 $@"@criticalmanufacturing/connect-iot-utilities-semi-tasks@5.4.3",
             ]);
