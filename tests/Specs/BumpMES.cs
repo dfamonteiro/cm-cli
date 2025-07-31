@@ -239,7 +239,14 @@ public class BumpMES
 
         string rootCmfpackageContents = fileSystem.File.ReadAllText(@"c:\\cmfpackage.json");
 
-        // Cmf.Environment, criticalmanufacturing.deploymentmetadata and CriticalManufacturing.DeploymentMetadata should all be updated
+        JObject rootCmfpackageObject = (JObject)JsonConvert.DeserializeObject(rootCmfpackageContents);
+
+        rootCmfpackageObject["dependencies"][0]["version"].ToString().Should().Be("1.2.0");
+        rootCmfpackageObject["dependencies"][1]["version"].ToString().Should().Be(version); // Cmf.Environment
+        rootCmfpackageObject["dependencies"][2]["version"].ToString().Should().Be(version); // criticalmanufacturing.deploymentmetadata
+        rootCmfpackageObject["dependencies"][3]["version"].ToString().Should().Be(version); // CriticalManufacturing.DeploymentMetadata
+        rootCmfpackageObject["dependencies"][4]["version"].ToString().Should().Be("3.2.0");
+
         Assert.Equal(3, Regex.Matches(rootCmfpackageContents, version.Replace(".", "\\.")).Count);
 
         string csprojContents = fileSystem.File.ReadAllText(@"c:\\Business\Common\a.b.c.csproj");
