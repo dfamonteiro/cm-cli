@@ -304,8 +304,26 @@ public class BumpMES
                           ""source"": ""DEEs\\ProcessRules\\After\\*"",
                           ""target"": ""DeeRules\\ProcessRules\\After"",
                           ""contentType"": ""ProcessRulesPost""
+                        },
+                        {
+                          ""source"": ""MasterData/Framework/$(version)/*"",
+                          ""target"": ""MasterData/$(version)/"",
+                          ""contentType"": ""MasterData""
                         }
                       ]
+                    }"
+                )
+            },            
+            {
+                MockUnixSupport.Path(@"c:\\abc\cmfpackage.json"),
+                new MockFileData(
+                    @"{
+                      ""packageId"": ""Root"",
+                      ""version"": ""3.2.0"",
+                      ""description"": ""Data Package"",
+                      ""packageType"": ""Data"",
+                      ""isInstallable"": true,
+                      ""isUniqueInstall"": true
                     }"
                 )
             },
@@ -369,15 +387,40 @@ public class BumpMES
                           ""LinkRouter"": ""Metro"",
                           ""TasksLibraryPackages"": ""[\""@criticalmanufacturing/connect-iot-controller-engine-core-tasks@11.1.5\""]"",
                           ""DefaultWorkflowType"": ""DataFlow""
+                        },
+                        ""2"": {
+                          ""Name"": ""Test_Controller"",
+                          ""Description"": """",
+                          ""IsTemplate"": ""No"",
+                          ""Type"": ""General"",
+                          ""ControllerPackageVersion"": ""11.1.5"",
+                          ""ObjectType"": ""Resource"",
+                          ""TasksPackages"": ""[\""connect-iot-controller-engine-core-tasks\"",\""connect-iot-controller-engine-custom-utilities-tasks\""]"",
+                          ""Scope"": ""ConnectIoT"",
+                          ""AutomaticCheckpoints"": """",
+                          ""Timeout"": """",
+                          ""EntityPicture"": """",
+                          ""LinkConnector"": ""Rounded"",
+                          ""LinkRouter"": ""Metro"",
+                          ""TasksLibraryPackages"": [
+                            ""@criticalmanufacturing/ignore-this-package@11.1.5""
+                            ],
+                          ""DefaultWorkflowType"": ""DataFlow""
                         }
                       }
                     }"
+                )
+            },
+            {
+                MockUnixSupport.Path(@"c:\\MasterData\a.excel"),
+                new MockFileData(
+                    @""
                 )
             }
         });
 
         BumpMESCommand cmd = new BumpMESCommand(fileSystem);
-        cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, iotShouldBeUpdated ? version : null, []);
+        cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, iotShouldBeUpdated ? version : null, ["ignore-this-package"]);
 
         string csprojContents = fileSystem.File.ReadAllText(@"c:\\DEEs\a.b.c.csproj");
         csprojContents.Should().Contain(
@@ -394,7 +437,7 @@ public class BumpMES
                 $@"""ControllerPackageVersion"": ""{version}""",
                 $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{version}"
             ]);
-            Assert.Equal(5, Regex.Matches(mdlContents, version.Replace(".", "\\.")).Count);
+            Assert.Equal(6, Regex.Matches(mdlContents, version.Replace(".", "\\.")).Count);
         }
     }
 
