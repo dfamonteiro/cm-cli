@@ -452,4 +452,112 @@ public class BumpMES
             jsonContents[1].Should().Be("\t\"a\": []");
         }
     }
+
+    [Fact]
+    public void BumpMES_UpdateNPMProject()
+    {
+        string cmfPackagePath = @"c:\\cmfpackage.json";
+
+        string npmPackagePath     = @"c:\\abc\package.json";
+        string npmPackagelockPath = @"c:\\package-lock.json";
+
+        string distPackagePath     = @"c:\\dist\package.json";
+        string distPackagelockPath = @"c:\\dist\package-lock.json";
+
+        string nodeModulesPackagePath     = @"c:\\node_modules\package.json";
+        string nodeModulesPackagelockPath = @"c:\\node_modules\package-lock.json";
+
+        var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+        {
+            {
+                MockUnixSupport.Path(cmfPackagePath),
+                new MockFileData(@"{
+                  ""packageId"": ""Cmf.SMT.Html"",
+                  ""version"": ""3.2.0"",
+                  ""description"": ""HTML Package"",
+                  ""packageType"": ""HTML"",
+                  ""isInstallable"": true,
+                  ""isUniqueInstall"": false,
+                  ""steps"": [],
+                  ""contentToPack"": [
+                    {
+                      ""source"": ""dist/cmf-smt-html/**"",
+                      ""target"": """"
+                    }
+                  ]
+                }")
+            },
+            {
+                MockUnixSupport.Path(npmPackagePath),
+                new MockFileData(@"{
+                  ""name"": ""cmf-smt-html"",
+                  ""version"": ""3.2.0"",
+                  ""scripts"": {
+                    ""ng"": ""ng"",
+                    ""start"": ""ng serve"",
+                  },
+                  ""private"": true,
+                  ""dependencies"": {
+                    ""@angular/service-worker"": ""^17.3.0"",
+                    ""cmf-mes-ui"": ""release-1115"",
+                    ""fast-xml-parser"": ""^4.3.6""
+                  },
+                  ""devDependencies"": {
+                    ""@angular/compiler-cli"": ""^17.3.0"",
+                    ""@criticalmanufacturing/ngx-schematics"": ""release-1115"",
+                    ""@types/jasmine"": ""~5.1.0""
+                  }
+                }")
+            },
+            {
+                MockUnixSupport.Path(npmPackagelockPath),
+                @""
+            },
+            {
+                MockUnixSupport.Path(distPackagePath),
+                new MockFileData(@"{
+                  ""devDependencies"": {
+                    ""@criticalmanufacturing/ngx-schematics"": ""release-1115"",
+                  }
+                }")
+            },
+            {
+                MockUnixSupport.Path(distPackagelockPath),
+                @""
+            },
+            {
+                MockUnixSupport.Path(nodeModulesPackagePath),
+                new MockFileData(@"{
+                  ""devDependencies"": {
+                    ""@criticalmanufacturing/ngx-schematics"": ""release-1115"",
+                  }
+                }")
+            },
+            {
+                MockUnixSupport.Path(nodeModulesPackagelockPath),
+                @""
+            },
+        });
+
+        ExecutionContext.ServiceProvider = (new ServiceCollection())
+            .AddSingleton<IProjectConfigService>(new ProjectConfigService())
+            .BuildServiceProvider();
+        ExecutionContext.Initialize(fileSystem);
+
+        MESBumpUtilities.UpdateNPMProject(fileSystem, new CmfPackage(fileSystem.FileInfo.New(cmfPackagePath)), "11.1.6");
+
+        fileSystem.FileInfo.New(npmPackagelockPath).Exists.Should().BeFalse();
+        fileSystem.FileInfo.New(distPackagelockPath).Exists.Should().BeTrue();
+        fileSystem.FileInfo.New(nodeModulesPackagelockPath).Exists.Should().BeTrue();
+
+        fileSystem.File.ReadAllText(distPackagePath).Should().Contain(@"""@criticalmanufacturing/ngx-schematics"": ""release-1115""");
+        fileSystem.File.ReadAllText(nodeModulesPackagePath).Should().Contain(@"""@criticalmanufacturing/ngx-schematics"": ""release-1115""");
+
+        fileSystem.File.ReadAllText(npmPackagePath).Should().NotContain("release-1115");
+        fileSystem.File.ReadAllText(npmPackagePath).Should().ContainAll([
+            @"""@criticalmanufacturing/ngx-schematics"": ""release-1116""",
+            @"""cmf-mes-ui"": ""release-1116""",
+        ]);
+        Assert.Equal(2, Regex.Matches(fileSystem.File.ReadAllText(npmPackagePath), @"release-1116").Count);
+    }
 }
