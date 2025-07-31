@@ -10,7 +10,9 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using Cmf.CLI.Core.Enums;
 using System.Text.Json.Nodes;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("tests")]
 namespace Cmf.CLI.Utilities
 {
     public static class MESBumpUtilities
@@ -323,27 +325,35 @@ namespace Cmf.CLI.Utilities
         /// <param name="jsonText">Contents of the JSON file in string form.</param>
         /// <param name="jsonObject">Contents of the JSON file in JObject form.</param>
         /// <param name="fileSystem">The file system abstraction used to access files.</param>
-        private static void SerializeWithOriginalIndentation(string jsonPath, string jsonText, JObject jsonObject, IFileSystem fileSystem)
+        internal static void SerializeWithOriginalIndentation(string jsonPath, string jsonText, JObject jsonObject, IFileSystem fileSystem)
         {
             // Get the leading whitespace of the second JSON line (it should have exactly one level of indentation)
             string secondLine = jsonText.Split('\n').ElementAtOrDefault(1);
 
-            string originalIndentation;
-            if (!string.IsNullOrEmpty(secondLine) && (secondLine.StartsWith(' ') || secondLine.StartsWith('\t')))
+            int indentationCount = 2;
+            char indentationChar = ' ';
+
+            if (!string.IsNullOrEmpty(secondLine))
             {
-                originalIndentation = Regex.Match(secondLine, @"^\s*").Value;
-            }
-            else
-            {
-                originalIndentation = "  "; // Fallback indentation: two spaces
+                if (secondLine.StartsWith('\t'))
+                {
+                    indentationCount = 1;
+                    indentationChar = '\t';
+                }
+                else if (secondLine.StartsWith(' '))
+                {
+                    indentationCount = Regex.Match(secondLine, @"^\s*").Value.Length; // Get the number of leading white space characters
+
+                    indentationCount = (indentationCount <= 2) ? 2 : 4; // Force indentation to either be 2 or 4 spaces
+                }
             }
 
             StringWriter stringWriter = new StringWriter();
             JsonTextWriter jsonWriter = new JsonTextWriter(stringWriter)
             {
                 Formatting = Formatting.Indented,
-                Indentation = originalIndentation[0] == '\t' ? 1 : originalIndentation.Length, // if the indentation char is a tab, force the value to be 1
-                IndentChar = originalIndentation[0],
+                Indentation = indentationCount,
+                IndentChar = indentationChar,
             };
 
             JsonSerializer serializer = new JsonSerializer();

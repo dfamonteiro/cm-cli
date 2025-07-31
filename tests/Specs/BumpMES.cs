@@ -1,21 +1,16 @@
-
-using Cmf.CLI.Commands;
-using Cmf.CLI.Constants;
-using Cmf.CLI.Core.Interfaces;
-using Cmf.CLI.Core.Objects;
-using Cmf.CLI.Factories;
-using Cmf.CLI.Handlers;
-using FluentAssertions;
-using FluentAssertions.Common;
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
+using System.Linq;
 using System.Text.RegularExpressions;
+using Cmf.CLI.Commands;
+using Cmf.CLI.Core.Objects;
+using Cmf.CLI.Handlers;
+using Cmf.CLI.Utilities;
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace tests.Specs;
@@ -105,7 +100,7 @@ public class BumpMES
 
         BumpMESCommand cmd = new BumpMESCommand(fileSystem);
         cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, version, []);
-        
+
         string projectConfigContents = fileSystem.File.ReadAllText(path);
 
         projectConfigContents.Should().ContainAll([
@@ -399,6 +394,62 @@ public class BumpMES
                 $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{version}"
             ]);
             Assert.Equal(5, Regex.Matches(mdlContents, version.Replace(".", "\\.")).Count);
+        }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    public void BumpMES_JSONSerialization(int jsonVariation)
+    {
+        string jsonPath = @"c:\\test.json";
+        List<string> jsonFileVariations = [
+            "{\n\"a\": []\n}",      // 0 spaces
+            "{\n \"a\": []\n}",     // 1 space
+            "{\n  \"a\": []\n}",    // 2 spaces
+            "{\n   \"a\": []\n}",   // 3 spaces
+            "{\n    \"a\": []\n}",  // 4 spaces
+            "{\n     \"a\": []\n}", // 5 spaces
+            "{\n\t\"a\": []\n}",    // 1 tab
+            "{\n\t\t\"a\": []\n}",  // 2 tabs
+            "{\"a\": []}",          // JSON in a single line
+        ];
+
+        var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+        {
+            {
+                MockUnixSupport.Path(jsonPath),
+                new MockFileData(jsonFileVariations[jsonVariation])
+            }
+        });
+
+        MESBumpUtilities.SerializeWithOriginalIndentation(
+            jsonPath,
+            jsonFileVariations[jsonVariation],
+            (JObject)JsonConvert.DeserializeObject(jsonFileVariations[jsonVariation]),
+            fileSystem
+        );
+
+        List<string> jsonContents = fileSystem.File.ReadAllText(jsonPath).Split("\r\n").ToList();
+
+        if (jsonVariation <= 2 || jsonVariation == 8) // 0 1 2 8
+        {
+            jsonContents[1].Should().Be("  \"a\": []");
+        }
+        else if (jsonVariation <= 5) // 3 4 5
+        {
+            jsonContents[1].Should().Be("    \"a\": []");
+        }
+        else // 6 7
+        {
+            jsonContents[1].Should().Be("\t\"a\": []");
         }
     }
 }
