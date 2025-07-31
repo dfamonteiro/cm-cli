@@ -9,6 +9,7 @@ using Cmf.CLI.Handlers;
 using Cmf.CLI.Utilities;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.TemplateEngine.Core.Expressions.VisualBasic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -559,5 +560,81 @@ public class BumpMES
             @"""cmf-mes-ui"": ""release-1116""",
         ]);
         Assert.Equal(2, Regex.Matches(fileSystem.File.ReadAllText(npmPackagePath), @"release-1116").Count);
+    }
+
+    [Fact]
+    public void BumpMES_TestPackage()
+    {
+        string version = "11.1.6";
+
+        var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+        {
+            {
+                MockUnixSupport.Path(@"c:\\.project-config.json"),
+                new MockFileData(
+                    @"{
+                          ""MESVersion"": ""11.1.5""
+                    }"
+                )
+            },
+            {
+                MockUnixSupport.Path(@"c:\\cmfpackage.json"),
+                new MockFileData(
+                    @"{
+                      ""packageId"": ""Cmf.SMT.Tests"",
+                      ""version"": ""3.2.0"",
+                      ""description"": ""Tests Package"",
+                      ""packageType"": ""Tests"",
+                      ""isInstallable"": false,
+                      ""isUniqueInstall"": false,
+                      ""contentToPack"": [
+                        {
+                          ""source"": ""Release/**"",
+                          ""target"": """"
+                        },
+                        {
+                          ""source"": ""../Libs/Tests/*.dll"",
+                          ""target"": """"
+                        }
+                      ]
+                    }"
+                )
+            },
+            {
+                MockUnixSupport.Path(@"c:\\Common\a.b.c.csproj"),
+                new MockFileData(
+                    @"
+                        <?xml version=""1.0"" encoding=""utf-8""?>
+                        <Project Sdk=""Microsoft.NET.Sdk"">
+                          <ItemGroup>
+                            <ProjectReference Include=""..\Cmf.Custom.Tests.Biz.Common\Cmf.Custom.Tests.Biz.Common.csproj"" />
+                          </ItemGroup>
+                          <ItemGroup>
+                            <PackageReference Include=""Microsoft.NET.Test.Sdk"" Version=""16.9.4"" />
+                            <PackageReference Include=""MSTest.TestAdapter"" Version=""2.2.3"" />
+                            <PackageReference Include=""MSTest.TestFramework"" Version=""2.2.3"" />
+                          </ItemGroup>
+                          <ItemGroup>
+                            <PackageReference Include=""Cmf.Common.TestUtilities"" Version=""2.3.157590"" />
+                            <PackageReference Include=""Cmf.Common.TestFramework.ConnectIoT"" Version=""1.0.131717"" />
+                            <PackageReference Include=""Cmf.Dev.Mes.TestScenarios"" Version=""11.1.5"" />
+                          </ItemGroup>
+                        </Project>
+                    "
+                )
+            }
+        });
+
+
+        BumpMESCommand cmd = new BumpMESCommand(fileSystem);
+        cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, null, []);
+
+        string csprojContents = fileSystem.File.ReadAllText(@"c:\\Common\a.b.c.csproj");
+        csprojContents.Should().ContainAll([
+            $@"<PackageReference Include=""Cmf.Common.TestUtilities"" Version=""2.3.157590"" />", // Shouldn't be changed
+            $@"<PackageReference Include=""Cmf.Common.TestFramework.ConnectIoT"" Version=""1.0.131717"" />", // Shouldn't be changed
+            $@"<PackageReference Include=""Cmf.Dev.Mes.TestScenarios"" Version=""{version}"" />",
+        ]);
+        Assert.Single(Regex.Matches(csprojContents, version.Replace(".", "\\.")));
     }
 }
