@@ -375,6 +375,16 @@ public class BumpMES
                               ""version"": ""11.1.5""
                             }
                           }
+                        },
+                        {
+                          ""id"": ""@criticalmanufacturing/connect-iot-controller-engine-core-tasks#anyToConstant"",
+                          ""reference"": {
+                            ""name"": ""anyToConstant"",
+                            ""package"": {
+                              ""name"": ""@criticalmanufacturing/ignore-this-package"",
+                              ""version"": ""1.2.3""
+                            }
+                          }
                         }
                       ],
                       ""links"": [
@@ -553,6 +563,7 @@ public class BumpMES
 
         if (iotShouldBeUpdated)
         {
+            #region Masterdata validations
             string mdlContents = fileSystem.File.ReadAllText(@"c:\\MasterData\a.json");
             mdlContents.Should().ContainAll([
                 $@"""PackageVersion"": ""{iotVersion}""",
@@ -562,10 +573,25 @@ public class BumpMES
                 $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{iotVersion}"
             ]);
             Assert.Equal(6, Regex.Matches(mdlContents, iotVersion.Replace(".", "\\.")).Count);
+            #endregion IoT Masterdata validations
 
+            #region Workflow validations
             string wflContents = fileSystem.File.ReadAllText(@"c:\\AutomationWorkFlows\workflow.json");
+            JObject workflowJsonObject = (JObject)JsonConvert.DeserializeObject(wflContents);
+
+            // Tasks
+            workflowJsonObject["tasks"][0]["reference"]["package"]["version"].ToString().Should().Be(iotVersion);
+            workflowJsonObject["tasks"][1]["reference"]["package"]["version"].ToString().Should().Be("11.1.5");
+            workflowJsonObject["tasks"][2]["reference"]["package"]["version"].ToString().Should().Be(iotVersion);
+
+            // Converters
+            workflowJsonObject["converters"][0]["reference"]["package"]["version"].ToString().Should().Be(iotVersion);
+            workflowJsonObject["converters"][1]["reference"]["package"]["version"].ToString().Should().Be("1.2.3");
+
             Assert.Equal(3, Regex.Matches(wflContents, iotVersion.Replace(".", "\\.")).Count);
             Assert.Single(Regex.Matches(wflContents, "11.1.5".Replace(".", "\\.")));
+            Assert.Single(Regex.Matches(wflContents, "1.2.3".Replace(".", "\\.")));
+            #endregion IoT Workflow validations
         }
     }
 
