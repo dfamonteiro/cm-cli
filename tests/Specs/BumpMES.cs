@@ -516,7 +516,10 @@ public class BumpMES
                           ""LinkRouter"": ""Metro"",
                           ""TasksLibraryPackages"": [
                             ""@criticalmanufacturing/ignore-this-package@11.1.5"",
-                            ""@criticalmanufacturing/connect-iot-random@11.1.5""
+                            ""@criticalmanufacturing/connect-iot-random@11.1.5"",
+                            ""@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks@5.4.3"",
+                            ""@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks@5.4.3"",
+                            ""@criticalmanufacturing/connect-iot-utilities-semi-tasks@5.4.3""
                             ],
                           ""DefaultWorkflowType"": ""DataFlow""
                         },
@@ -580,6 +583,9 @@ public class BumpMES
                 $@"""ControllerPackageVersion"": ""{iotVersion}""",
                 $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{iotVersion}",
                 $@"@criticalmanufacturing/connect-iot-random@{iotVersion}",
+                $@"@criticalmanufacturing/connect-iot-controller-engine-custom-utilities-tasks@5.4.3",
+                $@"@criticalmanufacturing/connect-iot-controller-engine-custom-smt-utilities-tasks@5.4.3",
+                $@"@criticalmanufacturing/connect-iot-utilities-semi-tasks@5.4.3",
             ]);
             Assert.Equal(7, Regex.Matches(mdlContents, iotVersion.Replace(".", "\\.")).Count);
             #endregion IoT Masterdata validations
