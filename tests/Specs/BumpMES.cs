@@ -262,6 +262,7 @@ public class BumpMES
     public void BumpMES_DataPackage(bool iotShouldBeUpdated)
     {
         string version = "11.1.6";
+        string iotVersion = "11.1.6-123";
 
         var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
         {
@@ -309,11 +310,105 @@ public class BumpMES
                           ""source"": ""MasterData/Framework/$(version)/*"",
                           ""target"": ""MasterData/$(version)/"",
                           ""contentType"": ""MasterData""
+                        },
+                        {
+                          ""source"": ""AutomationWorkFlows\\*"",
+                          ""target"": ""AutomationWorkFlows"",
+                          ""contentType"": ""AutomationWorkFlows""
                         }
                       ]
                     }"
                 )
-            },            
+            },
+            {
+                MockUnixSupport.Path(@"c:\\AutomationWorkFlows\workflow.json"),
+                new MockFileData(
+                    @"{
+                      ""tasks"": [
+                        {
+                          ""id"": ""task_70864"",
+                          ""reference"": {
+                            ""name"": ""subWorkflowStart"",
+                            ""package"": {
+                              ""name"": ""@criticalmanufacturing/connect-iot-controller-engine-core-tasks"",
+                              ""version"": ""11.1.5""
+                            }
+                          },
+                          ""settings"": {
+                            ""outputs"": [],
+                            ""___cmf___name"": ""Start""
+                          }
+                        },
+                        {
+                          ""id"": ""task_70897"",
+                          ""reference"": {
+                            ""name"": ""subWorkflowEnd"",
+                            ""package"": {
+                              ""name"": ""@criticalmanufacturing/ignore-this-package"",
+                              ""version"": ""11.1.5""
+                            }
+                          },
+                          ""settings"": {
+                            ""inputs"": [],
+                            ""___cmf___name"": ""End""
+                          }
+                        },
+                        {
+                          ""id"": ""task_390"",
+                          ""reference"": {
+                            ""name"": ""workflow"",
+                            ""package"": {
+                              ""name"": ""@criticalmanufacturing/connect-iot-controller-engine-core-tasks"",
+                              ""version"": ""11.1.5""
+                            }
+                          },
+                          ""settings"": {}
+                        }
+                      ],
+                      ""converters"": [
+                        {
+                          ""id"": ""@criticalmanufacturing/connect-iot-controller-engine-core-tasks#anyToConstant"",
+                          ""reference"": {
+                            ""name"": ""anyToConstant"",
+                            ""package"": {
+                              ""name"": ""@criticalmanufacturing/connect-iot-controller-engine-core-tasks"",
+                              ""version"": ""11.1.5""
+                            }
+                          }
+                        }
+                      ],
+                      ""links"": [
+                        {
+                          ""id"": ""8e3dc544-2cf8-4387-80a5-aae7b8f6c654"",
+                          ""sourceId"": ""task_33039"",
+                          ""targetId"": ""task_70897"",
+                          ""inputName"": ""error"",
+                          ""outputName"": ""error""
+                        }
+                      ],
+                      ""layout"": {
+                        ""general"": {
+                          ""color"": null,
+                          ""notes"": []
+                        },
+                        ""drawers"": {
+                          ""DIAGRAM"": {
+                            ""tasks"": {
+                              ""task_70897"": {
+                                ""collapsed"": false,
+                                ""position"": {
+                                  ""x"": 1631,
+                                  ""y"": 105
+                                },
+                                ""outdated"": false
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }"
+                )
+            },
             {
                 MockUnixSupport.Path(@"c:\\abc\cmfpackage.json"),
                 new MockFileData(
@@ -444,14 +539,12 @@ public class BumpMES
             },
             {
                 MockUnixSupport.Path(@"c:\\MasterData\a.excel"),
-                new MockFileData(
-                    @""
-                )
+                new MockFileData("")
             }
         });
 
         BumpMESCommand cmd = new BumpMESCommand(fileSystem);
-        cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, iotShouldBeUpdated ? version : null, ["ignore-this-package"]);
+        cmd.Execute(fileSystem.DirectoryInfo.New(@"c:\\"), version, iotShouldBeUpdated ? iotVersion : null, ["ignore-this-package"]);
 
         string csprojContents = fileSystem.File.ReadAllText(@"c:\\DEEs\a.b.c.csproj");
         csprojContents.Should().Contain(
@@ -462,13 +555,17 @@ public class BumpMES
         {
             string mdlContents = fileSystem.File.ReadAllText(@"c:\\MasterData\a.json");
             mdlContents.Should().ContainAll([
-                $@"""PackageVersion"": ""{version}""",
-                $@"""MonitorPackageVersion"": ""{version}""",
-                $@"""ManagerPackageVersion"": ""{version}""",
-                $@"""ControllerPackageVersion"": ""{version}""",
-                $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{version}"
+                $@"""PackageVersion"": ""{iotVersion}""",
+                $@"""MonitorPackageVersion"": ""{iotVersion}""",
+                $@"""ManagerPackageVersion"": ""{iotVersion}""",
+                $@"""ControllerPackageVersion"": ""{iotVersion}""",
+                $@"@criticalmanufacturing/connect-iot-controller-engine-core-tasks@{iotVersion}"
             ]);
-            Assert.Equal(6, Regex.Matches(mdlContents, version.Replace(".", "\\.")).Count);
+            Assert.Equal(6, Regex.Matches(mdlContents, iotVersion.Replace(".", "\\.")).Count);
+
+            string wflContents = fileSystem.File.ReadAllText(@"c:\\AutomationWorkFlows\workflow.json");
+            Assert.Equal(3, Regex.Matches(wflContents, iotVersion.Replace(".", "\\.")).Count);
+            Assert.Single(Regex.Matches(wflContents, "11.1.5".Replace(".", "\\.")));
         }
     }
 
